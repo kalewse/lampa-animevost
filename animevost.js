@@ -1,167 +1,401 @@
 (function () {
     'use strict';
 
-    var FLAG = 'animevost_debug_v021';
-    var BASE = 'https://animevost.org/';
+    var FLAG = 'animevost_plugin_v022_ready';
+    var COMPONENT = 'animevost_debug_v022';
+    var BASE_URL = 'https://animevost.org/';
 
     function notify(text) {
         try {
-            Lampa.Noty.show(text);
+            if (window.Lampa && Lampa.Noty && Lampa.Noty.show) {
+                Lampa.Noty.show(text);
+            }
         } catch (e) {}
     }
 
-    function escapeHtml(text) {
-        return String(text || '')
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;');
+    function safeString(value) {
+        try {
+            if (typeof value === 'string') return value;
+            if (value === null) return 'null';
+            if (typeof value === 'undefined') return 'undefined';
+
+            return JSON.stringify(value);
+        }
+        catch (e) {
+            try {
+                return String(value);
+            }
+            catch (e2) {
+                return '[не удалось преобразовать ответ]';
+            }
+        }
     }
 
-    function showDebug(data) {
-        var type = typeof data;
-        var text = '';
+    function detectResponse(text) {
+        var lower = (text || '').toLowerCase();
+        var result = [];
 
-        try {
-            if (typeof data === 'string') {
-                text = data;
-            } else {
-                text = JSON.stringify(data);
-            }
-        } catch (e) {
-            text = String(data);
+        if (lower.indexOf('animevost') >= 0) {
+            result.push('найдено слово AnimeVost');
         }
 
-        var preview = text.substring(0, 700);
+        if (
+            lower.indexOf('<html') >= 0 ||
+            lower.indexOf('<!doctype') >= 0
+        ) {
+            result.push('похоже на HTML');
+        }
 
-        Lampa.Modal.open({
-            title: 'AnimeVost V0.2.1',
+        if (
+            lower.indexOf('cloudflare') >= 0 ||
+            lower.indexOf('just a moment') >= 0
+        ) {
+            result.push('похоже на Cloudflare');
+        }
 
-            html:
-                '<div style="padding:1.3em;font-size:1.05em;line-height:1.45;">' +
+        if (
+            lower.indexOf('ddos') >= 0 ||
+            lower.indexOf('checking your browser') >= 0
+        ) {
+            result.push('похоже на защитную страницу');
+        }
 
-                    '<b>Ответ получен</b><br><br>' +
+        if (
+            lower.indexOf('access denied') >= 0 ||
+            lower.indexOf('forbidden') >= 0
+        ) {
+            result.push('возможна блокировка доступа');
+        }
 
-                    'Тип: <b>' + escapeHtml(type) + '</b><br>' +
-                    'Размер: <b>' + text.length + '</b> символов<br><br>' +
+        if (!result.length) {
+            result.push('тип ответа пока не определён');
+        }
 
-                    '<b>Начало ответа:</b><br><br>' +
-
-                    '<div style="' +
-                        'font-size:0.85em;' +
-                        'background:rgba(255,255,255,0.08);' +
-                        'padding:1em;' +
-                        'word-break:break-all;' +
-                        'white-space:pre-wrap;' +
-                    '">' +
-
-                        escapeHtml(preview) +
-
-                    '</div>' +
-
-                '</div>',
-
-            size: 'large',
-
-            onBack: function () {
-                Lampa.Modal.close();
-            }
-        });
+        return result.join(', ');
     }
 
-    function test() {
-        notify('AnimeVost: загрузка...');
+    function DebugComponent(object) {
+        var network = new Lampa.Reguest();
+        var alive = true;
 
-        Lampa.Network.timeout(15000);
-
-        Lampa.Network.silent(
-            BASE,
-
-            function (data) {
-                showDebug(data);
-            },
-
-            function (error) {
-                var status = '?';
-                var response = '';
-
-                try {
-                    status = error.status;
-                    response = error.responseText || '';
-                } catch (e) {}
-
-                Lampa.Modal.open({
-                    title: 'AnimeVost V0.2.1',
-
-                    html:
-                        '<div style="padding:1.5em;">' +
-                        '<b>Ошибка запроса</b><br><br>' +
-                        'HTTP: ' + escapeHtml(status) +
-                        '<br><br>' +
-                        escapeHtml(response.substring(0, 500)) +
-                        '</div>',
-
-                    size: 'large',
-
-                    onBack: function () {
-                        Lampa.Modal.close();
-                    }
-                });
-            },
-
-            false,
-
-            {
-                dataType: 'text'
-            }
+        var root = $(
+            '<div style="' +
+                'padding:2.2em 3em;' +
+                'max-width:1200px;' +
+            '"></div>'
         );
+
+        var title = $(
+            '<div style="' +
+                'font-size:2.2em;' +
+                'font-weight:600;' +
+                'margin-bottom:0.7em;' +
+            '">' +
+                'AnimeVost V0.2.2' +
+            '</div>'
+        );
+
+        var status = $(
+            '<div style="' +
+                'font-size:1.25em;' +
+                'line-height:1.55;' +
+                'margin-bottom:1em;' +
+            '"></div>'
+        );
+
+        var meta = $(
+            '<div style="' +
+                'font-size:1.05em;' +
+                'line-height:1.5;' +
+                'margin-bottom:1em;' +
+            '"></div>'
+        );
+
+        var previewTitle = $(
+            '<div style="' +
+                'font-size:1.15em;' +
+                'font-weight:600;' +
+                'margin:1em 0 0.5em;' +
+            '">' +
+                'Начало ответа:' +
+            '</div>'
+        );
+
+        var preview = $(
+            '<div style="' +
+                'font-size:0.84em;' +
+                'line-height:1.35;' +
+                'white-space:pre-wrap;' +
+                'word-break:break-word;' +
+                'background:rgba(255,255,255,0.08);' +
+                'padding:1em;' +
+                'border-radius:0.35em;' +
+                'max-height:19em;' +
+                'overflow:hidden;' +
+            '"></div>'
+        );
+
+        root.append(title);
+        root.append(status);
+        root.append(meta);
+        root.append(previewTitle);
+        root.append(preview);
+
+        function renderLoading() {
+            status.text('Загрузка AnimeVost...');
+
+            meta.text(
+                'Проверяем сырой ответ сайта через Lampa.Reguest.native().'
+            );
+
+            preview.text('Ожидание ответа...');
+        }
+
+        function renderSuccess(data) {
+            if (!alive) return;
+
+            var text = safeString(data);
+            var type = typeof data;
+            var first = text.substring(0, 1400);
+
+            status.text(
+                'Ответ успешно получен.'
+            );
+
+            meta.text(
+                'Тип: ' + type +
+                '   |   Размер: ' +
+                text.length +
+                ' символов' +
+                '   |   Анализ: ' +
+                detectResponse(text)
+            );
+
+            preview.text(
+                first || '[пустой ответ]'
+            );
+        }
+
+        function renderError(error, exception) {
+            if (!alive) return;
+
+            var code = '?';
+            var message = '';
+            var body = '';
+
+            try {
+                code = network.errorCode(error);
+            }
+            catch (e) {
+                try {
+                    if (
+                        error &&
+                        typeof error.status !== 'undefined'
+                    ) {
+                        code = error.status;
+                    }
+                }
+                catch (e2) {}
+            }
+
+            try {
+                message =
+                    network.errorDecode(
+                        error,
+                        exception
+                    ) || '';
+            }
+            catch (e3) {}
+
+            try {
+                body =
+                    error &&
+                    error.responseText
+                        ? error.responseText
+                        : '';
+            }
+            catch (e4) {}
+
+            status.text(
+                'Ошибка сетевого запроса.'
+            );
+
+            meta.text(
+                'HTTP/код: ' +
+                code +
+                (
+                    message
+                        ? '   |   ' + message
+                        : ''
+                )
+            );
+
+            preview.text(
+                (
+                    body ||
+                    '[нет текста ответа]'
+                ).substring(0, 1400)
+            );
+        }
+
+        this.create = function () {
+            renderLoading();
+
+            try {
+                network.timeout(15000);
+
+                network.native(
+                    BASE_URL,
+
+                    renderSuccess,
+
+                    renderError,
+
+                    null,
+
+                    {
+                        dataType: 'text'
+                    }
+                );
+            }
+            catch (e) {
+                status.text(
+                    'Ошибка запуска сетевого теста.'
+                );
+
+                meta.text(
+                    String(
+                        e && e.message
+                            ? e.message
+                            : e
+                    )
+                );
+
+                preview.text('');
+            }
+
+            return this.render();
+        };
+
+        this.start = function () {};
+
+        this.stop = function () {};
+
+        this.destroy = function () {
+            alive = false;
+
+            try {
+                network.clear();
+            }
+            catch (e) {}
+
+            root.remove();
+        };
+
+        this.render = function () {
+            return root;
+        };
     }
 
-    function addMenu() {
+    function addMenuButton() {
         var button = $(
-            '<li class="menu__item selector">' +
+            '<li class="menu__item selector" ' +
+                'data-action="animevost_v022">' +
+
                 '<div class="menu__ico">' +
-                    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+
+                    '<svg viewBox="0 0 24 24" ' +
+                        'xmlns="http://www.w3.org/2000/svg">' +
+
                         '<path fill="currentColor" ' +
-                        'd="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-1 5 6 5-6 5V7z"/>' +
+                            'd="' +
+                            'M12 2a10 10 0 1 0 0 20 ' +
+                            '10 10 0 0 0 0-20zm-1 5 ' +
+                            '6 5-6 5V7z' +
+                            '"/>' +
+
                     '</svg>' +
+
                 '</div>' +
-                '<div class="menu__text">AnimeVost</div>' +
+
+                '<div class="menu__text">' +
+                    'AnimeVost' +
+                '</div>' +
+
             '</li>'
         );
 
-        button.on('hover:enter', function () {
-            test();
-        });
+        button.on(
+            'hover:enter',
+
+            function () {
+                Lampa.Activity.push({
+                    url: '',
+                    title: 'AnimeVost',
+                    component: COMPONENT,
+                    page: 1
+                });
+            }
+        );
 
         $('.menu .menu__list')
             .eq(0)
             .append(button);
-
-        notify('AnimeVost V0.2.1 загружен');
     }
 
     function init() {
-        if (window[FLAG]) return;
+        if (window[FLAG]) {
+            return;
+        }
 
         window[FLAG] = true;
 
         try {
-            addMenu();
-        } catch (e) {
-            console.log('AnimeVost debug error:', e);
-            notify('Ошибка AnimeVost');
+            if (
+                !Lampa.Component.get(
+                    COMPONENT
+                )
+            ) {
+                Lampa.Component.add(
+                    COMPONENT,
+                    DebugComponent
+                );
+            }
+
+            addMenuButton();
+
+            notify(
+                'AnimeVost V0.2.2 загружен'
+            );
+        }
+        catch (e) {
+            console.log(
+                'AnimeVost V0.2.2 init error:',
+                e
+            );
+
+            notify(
+                'Ошибка запуска AnimeVost V0.2.2'
+            );
         }
     }
 
     if (window.appready) {
         init();
-    } else {
-        Lampa.Listener.follow('app', function (event) {
-            if (event && event.type === 'ready') {
-                init();
+    }
+    else {
+        Lampa.Listener.follow(
+            'app',
+
+            function (event) {
+                if (
+                    event &&
+                    event.type === 'ready'
+                ) {
+                    init();
+                }
             }
-        });
+        );
     }
 
 })();
