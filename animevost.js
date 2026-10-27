@@ -1,172 +1,245 @@
 (function () {
     'use strict';
 
-    function startAnimeVostPlugin() {
-        if (window.animevost_plugin_ready) return;
+    var PLUGIN_FLAG = 'animevost_plugin_v02_ready';
+    var BASE = 'https://animevost.org';
 
-        window.animevost_plugin_ready = true;
+    function notify(text) {
+        try {
+            Lampa.Noty.show(text);
+        } catch (e) {}
+    }
 
-        Lampa.Lang.add({
-            animevost_title: {
-                ru: 'AnimeVost',
-                en: 'AnimeVost'
-            }
-        });
-
-        Lampa.Template.add(
-            'animevost_test_main',
-            '<div style="padding:3em; max-width:900px;">' +
-                '<div style="font-size:2.4em; font-weight:600; margin-bottom:0.8em;">' +
-                    'AnimeVost' +
-                '</div>' +
-
-                '<div style="font-size:1.3em; line-height:1.6;">' +
-                    'Тестовый плагин V0.1 успешно запущен.' +
-                    '<br><br>' +
-
-                    'Версия Lampa: <span class="animevost-version"></span>' +
-                    '<br><br>' +
-
-                    'Это безопасная тестовая версия.' +
-                    '<br>' +
-
-                    'Она пока не подключается к AnimeVost и не запускает видео.' +
-                    '<br><br>' +
-
-                    'Если вы видите этот экран, значит плагин работает правильно.' +
-                '</div>' +
-            '</div>'
-        );
-
-        function AnimeVostComponent(object) {
-            var html;
-
-            this.create = function () {
-                html = Lampa.Template.get('animevost_test_main', {});
-
-                var version = 'неизвестно';
-
-                try {
-                    if (
-                        Lampa.Manifest &&
-                        Lampa.Manifest.app_version
-                    ) {
-                        version = Lampa.Manifest.app_version;
-                    }
-                } catch (e) {}
-
-                html.find('.animevost-version').text(version);
-
-                return this.render();
-            };
-
-            this.start = function () {};
-
-            this.stop = function () {};
-
-            this.destroy = function () {
-                if (html) html.remove();
-            };
-
-            this.render = function () {
-                return html;
-            };
-        }
-
-        function init() {
-            try {
-                Lampa.Component.add(
-                    'animevost_test_screen',
-                    AnimeVostComponent
-                );
-
-                var button = $(
-                    '<li class="menu__item selector">' +
-                        '<div class="menu__ico">' +
-
-                            '<svg viewBox="0 0 24 24" ' +
-                                'xmlns="http://www.w3.org/2000/svg">' +
-
-                                '<path fill="currentColor" ' +
-                                    'd="M12 2a10 10 0 1 0 0 20 ' +
-                                    '10 10 0 0 0 0-20zm-1 5 ' +
-                                    '6 5-6 5V7z"/>' +
-
-                            '</svg>' +
-
-                        '</div>' +
-
-                        '<div class="menu__text">' +
-                            'AnimeVost' +
-                        '</div>' +
-                    '</li>'
-                );
-
-                button.on('hover:enter', function () {
-                    Lampa.Activity.push({
-                        url: '',
-                        title: 'AnimeVost',
-                        component: 'animevost_test_screen',
-                        page: 1
-                    });
-                });
-
-                $('.menu .menu__list')
-                    .eq(0)
-                    .append(button);
-
-                try {
-                    Lampa.Noty.show(
-                        'AnimeVost V0.1 установлен'
-                    );
-                } catch (e) {}
-
-            } catch (error) {
-
-                console.log(
-                    'AnimeVost plugin error:',
-                    error
-                );
-
-                try {
-                    Lampa.Noty.show(
-                        'Ошибка запуска AnimeVost'
-                    );
-                } catch (e) {}
-            }
-        }
-
-        if (window.appready) {
-            init();
-        }
-        else {
-            Lampa.Listener.follow(
-                'app',
-                function (event) {
-
-                    if (
-                        event &&
-                        event.type === 'ready'
-                    ) {
-                        init();
-                    }
+    function showResult(title, text) {
+        try {
+            Lampa.Modal.open({
+                title: title,
+                html:
+                    '<div style="padding:1.5em;font-size:1.2em;line-height:1.6">' +
+                    text +
+                    '</div>',
+                size: 'medium',
+                onBack: function () {
+                    Lampa.Modal.close();
                 }
+            });
+        } catch (e) {
+            notify(text);
+        }
+    }
+
+    function testPage(path, name) {
+        notify('AnimeVost: проверка соединения...');
+
+        try {
+            Lampa.Network.timeout(10000);
+
+            Lampa.Network.silent(
+                BASE + path,
+
+                function (data) {
+                    var html = '';
+
+                    try {
+                        if (typeof data === 'string') {
+                            html = data;
+                        }
+                    } catch (e) {}
+
+                    if (
+                        html &&
+                        (
+                            html.indexOf('animevost') >= 0 ||
+                            html.indexOf('Последние обновления') >= 0 ||
+                            html.indexOf('<html') >= 0
+                        )
+                    ) {
+                        showResult(
+                            'AnimeVost V0.2',
+                            '<b>УСПЕШНО</b><br><br>' +
+                            'Lampa смогла загрузить AnimeVost напрямую.<br><br>' +
+                            'Раздел: ' + name + '<br><br>' +
+                            'Это очень хороший результат. ' +
+                            'Теперь можно делать настоящий каталог, постеры и страницы аниме.'
+                        );
+                    }
+                    else {
+                        showResult(
+                            'AnimeVost V0.2',
+                            '<b>Ответ получен, но он необычный.</b><br><br>' +
+                            'Сам плагин работает нормально. ' +
+                            'Нужно будет немного изменить способ чтения сайта.'
+                        );
+                    }
+                },
+
+                function (error) {
+                    var status = '?';
+
+                    try {
+                        if (
+                            error &&
+                            typeof error.status !== 'undefined'
+                        ) {
+                            status = error.status;
+                        }
+                    } catch (e) {}
+
+                    showResult(
+                        'AnimeVost V0.2',
+                        '<b>Прямое соединение не прошло.</b><br><br>' +
+                        'Код ошибки: ' + status + '<br><br>' +
+                        'На LG webOS это скорее всего CORS.<br><br>' +
+                        'Это не проблема с Lampa и ничего не сломалось. ' +
+                        'В таком случае для каталога сделаем небольшой прокси.'
+                    );
+                },
+
+                false,
+
+                {
+                    dataType: 'text'
+                }
+            );
+        }
+        catch (e) {
+            showResult(
+                'AnimeVost V0.2',
+                'Ошибка при запуске сетевого теста.'
             );
         }
     }
 
-    try {
-        if (
-            window.Lampa &&
-            !window.animevost_plugin_ready
-        ) {
-            startAnimeVostPlugin();
+    function mainMenu() {
+        Lampa.Select.show({
+            title: 'AnimeVost V0.2',
+
+            items: [
+                {
+                    title: 'Главная',
+                    path: '/',
+                    name: 'Главная'
+                },
+                {
+                    title: 'Онгоинги',
+                    path: '/ongoing/',
+                    name: 'Онгоинги'
+                },
+                {
+                    title: 'Анонсы',
+                    path: '/preview/',
+                    name: 'Анонсы'
+                },
+                {
+                    title: 'Фэнтези',
+                    path: '/zhanr/fentezi/',
+                    name: 'Фэнтези'
+                },
+                {
+                    title: 'ТВ',
+                    path: '/tip/tv/',
+                    name: 'ТВ'
+                },
+                {
+                    title: '2025',
+                    path: '/god/2025/',
+                    name: '2025'
+                }
+            ],
+
+            onSelect: function (item) {
+                testPage(
+                    item.path,
+                    item.name
+                );
+            },
+
+            onBack: function () {
+                try {
+                    Lampa.Controller.toggle('menu');
+                } catch (e) {}
+            }
+        });
+    }
+
+    function addMenuButton() {
+        var button = $(
+            '<li class="menu__item selector">' +
+
+                '<div class="menu__ico">' +
+
+                    '<svg viewBox="0 0 24 24" ' +
+                        'xmlns="http://www.w3.org/2000/svg">' +
+
+                        '<path fill="currentColor" ' +
+                            'd="M12 2a10 10 0 1 0 0 20 ' +
+                            '10 10 0 0 0 0-20zm-1 5 ' +
+                            '6 5-6 5V7z"/>' +
+
+                    '</svg>' +
+
+                '</div>' +
+
+                '<div class="menu__text">' +
+                    'AnimeVost' +
+                '</div>' +
+
+            '</li>'
+        );
+
+        button.on(
+            'hover:enter',
+            function () {
+                mainMenu();
+            }
+        );
+
+        $('.menu .menu__list')
+            .eq(0)
+            .append(button);
+
+        notify(
+            'AnimeVost V0.2 загружен'
+        );
+    }
+
+    function init() {
+        if (window[PLUGIN_FLAG]) {
+            return;
+        }
+
+        window[PLUGIN_FLAG] = true;
+
+        try {
+            addMenuButton();
+        }
+        catch (e) {
+            console.log(
+                'AnimeVost V0.2 error:',
+                e
+            );
+
+            notify(
+                'Ошибка запуска AnimeVost'
+            );
         }
     }
-    catch (error) {
-        console.log(
-            'AnimeVost startup error:',
-            error
+
+    if (window.appready) {
+        init();
+    }
+    else {
+        Lampa.Listener.follow(
+            'app',
+            function (event) {
+
+                if (
+                    event &&
+                    event.type === 'ready'
+                ) {
+                    init();
+                }
+            }
         );
     }
 
