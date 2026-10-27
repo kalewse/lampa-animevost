@@ -1,47 +1,40 @@
 (function () {
     'use strict';
 
-    var FLAG = 'animevost_plugin_v032_ready';
-    var CATALOG = 'animevost_catalog_v032';
-    var DETAIL = 'animevost_detail_v032';
+    var NS = 'animevost_v040';
+    var FLAG = NS + '_ready';
+    var COMPONENT_CATALOG = NS + '_catalog';
+    var COMPONENT_DETAIL = NS + '_detail';
 
-    var WORKER =
-        'https://animevost-lampa.kalewse69.workers.dev/';
+    var WORKER = 'https://animevost-lampa.kalewse69.workers.dev/';
+    var ORIGIN = 'https://animevost.org';
 
-    var ORIGIN =
-        'https://animevost.org';
+    var DETAIL_CACHE = {};
 
     function notify(text) {
         try {
             Lampa.Noty.show(text);
-        }
-        catch (e) {}
+        } catch (e) {}
     }
 
     function clean(text) {
         return String(text || '')
+            .replace(/\u00a0/g, ' ')
             .replace(/\s+/g, ' ')
             .replace(/^\s+|\s+$/g, '');
+    }
+
+    function clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
     }
 
     function absoluteUrl(value) {
         value = clean(value);
 
-        if (!value) {
-            return '';
-        }
-
-        if (/^https?:\/\//i.test(value)) {
-            return value;
-        }
-
-        if (value.indexOf('//') === 0) {
-            return 'https:' + value;
-        }
-
-        if (value.charAt(0) !== '/') {
-            value = '/' + value;
-        }
+        if (!value) return '';
+        if (/^https?:\/\//i.test(value)) return value;
+        if (value.indexOf('//') === 0) return 'https:' + value;
+        if (value.charAt(0) !== '/') value = '/' + value;
 
         return ORIGIN + value;
     }
@@ -49,14 +42,11 @@
     function toPath(value) {
         value = clean(value);
 
-        if (!value) {
-            return '/';
-        }
+        if (!value) return '/';
 
         try {
             if (/^https?:\/\//i.test(value)) {
-                var a =
-                    document.createElement('a');
+                var a = document.createElement('a');
 
                 a.href = value;
 
@@ -84,6 +74,13 @@
             );
     }
 
+    function sameAnimeUrl(path) {
+        path = toPath(path);
+
+        return /^\/tip\/[^/]+\/[^?#]+\.html(?:\?.*)?$/i
+            .test(path);
+    }
+
     function firstMatch(
         text,
         expression
@@ -105,82 +102,55 @@
             : '';
     }
 
-    function findContainer(h2) {
-        var node =
-            h2;
+    function safeInt(
+        value,
+        fallback
+    ) {
+        var n =
+            parseInt(
+                value,
+                10
+            );
 
-        var best =
-            h2.parentElement ||
-            h2;
-
-        var i;
-
-        for (
-            i = 0;
-            i < 7 && node;
-            i++
-        ) {
-            var text =
-                clean(
-                    node.textContent ||
-                    ''
-                );
-
-            var titles =
-                0;
-
-            try {
-                titles =
-                    node
-                        .querySelectorAll(
-                            'h2 a[href*="/tip/"]'
-                        )
-                        .length;
-            }
-            catch (e) {}
-
-            if (
-                text.indexOf(
-                    'Год выхода:'
-                ) >= 0 &&
-                text.indexOf(
-                    'Описание:'
-                ) >= 0 &&
-                titles <= 1
-            ) {
-                return node;
-            }
-
-            if (
-                titles <= 1
-            ) {
-                best =
-                    node;
-            }
-
-            node =
-                node.parentElement;
-        }
-
-        return best;
+        return isNaN(n)
+            ? fallback
+            : n;
     }
 
-    function findPoster(
+    function textOf(node) {
+        try {
+            return clean(
+                node &&
+                node.textContent
+                    ? node.textContent
+                    : ''
+            );
+        }
+        catch (e) {
+            return '';
+        }
+    }
+
+    function findPosterInContainer(
         container,
         href
     ) {
+        if (!container) {
+            return '';
+        }
+
         var wanted =
             toPath(
                 href
             );
+
+        var i;
 
         var links =
             container
                 .querySelectorAll(
                     'a[href]'
                 );
-
-        var i;
 
         for (
             i = 0;
@@ -192,7 +162,7 @@
                     links[i]
                         .getAttribute(
                             'href'
-                        )
+                        ) || ''
                 ) === wanted
             ) {
                 var linked =
@@ -202,7 +172,7 @@
                         );
 
                 if (linked) {
-                    var source =
+                    var linkedSrc =
                         linked
                             .getAttribute(
                                 'data-src'
@@ -213,9 +183,9 @@
                             ) ||
                         '';
 
-                    if (source) {
+                    if (linkedSrc) {
                         return absoluteUrl(
-                            source
+                            linkedSrc
                         );
                     }
                 }
@@ -285,8 +255,16 @@
             }
 
             if (
+                lower.indexOf(
+                    'counter'
+                ) >= 0
+            ) {
+                continue;
+            }
+
+            if (
                 alt ||
-                /uploads|poster|story/i
+                /uploads|poster|story|covers?/i
                     .test(src)
             ) {
                 return absoluteUrl(
@@ -296,6 +274,72 @@
         }
 
         return '';
+    }
+
+    function findArticleContainer(node) {
+        var current =
+            node;
+
+        var best =
+            node &&
+            node.parentElement
+                ? node.parentElement
+                : node;
+
+        var i;
+
+        for (
+            i = 0;
+            i < 8 && current;
+            i++
+        ) {
+            var text =
+                textOf(
+                    current
+                );
+
+            var titleCount =
+                0;
+
+            try {
+                titleCount =
+                    current
+                        .querySelectorAll(
+                            'h2 a[href*="/tip/"]'
+                        )
+                        .length;
+            }
+            catch (e) {}
+
+            if (
+                text.indexOf(
+                    'Год выхода:'
+                ) >= 0 &&
+                (
+                    text.indexOf(
+                        'Описание:'
+                    ) >= 0 ||
+                    text.indexOf(
+                        'Количество серий:'
+                    ) >= 0
+                ) &&
+                titleCount <= 1
+            ) {
+                return current;
+            }
+
+            if (
+                titleCount <= 1
+            ) {
+                best =
+                    current;
+            }
+
+            current =
+                current.parentElement;
+        }
+
+        return best || node;
     }
 
     function parseMenu(doc) {
@@ -308,9 +352,12 @@
         var seen = {};
 
         var anchors =
-            doc.querySelectorAll(
-                'a[href]'
-            );
+            doc
+                .querySelectorAll(
+                    'a[href]'
+                );
+
+        var i;
 
         function add(
             group,
@@ -350,12 +397,13 @@
 
             result[group]
                 .push({
-                    title: title,
-                    path: path
+                    title:
+                        title,
+
+                    path:
+                        path
                 });
         }
-
-        var i;
 
         for (
             i = 0;
@@ -423,13 +471,13 @@
         result.years.sort(
             function (a, b) {
                 return (
-                    parseInt(
+                    safeInt(
                         b.title,
-                        10
+                        0
                     ) -
-                    parseInt(
+                    safeInt(
                         a.title,
-                        10
+                        0
                     )
                 );
             }
@@ -438,7 +486,194 @@
         return result;
     }
 
-    function parseItems(html) {
+    function parsePageNumber(
+        path
+    ) {
+        var match =
+            toPath(
+                path
+            ).match(
+                /\/page\/(\d+)\/?/i
+            );
+
+        return match
+            ? safeInt(
+                match[1],
+                1
+            )
+            : 1;
+    }
+
+    function baseSectionPath(
+        path
+    ) {
+        var cleanPath =
+            toPath(
+                path
+            )
+            .replace(
+                /[?#].*$/,
+                ''
+            );
+
+        cleanPath =
+            cleanPath
+                .replace(
+                    /\/page\/\d+\/?$/i,
+                    '/'
+                );
+
+        if (
+            cleanPath.charAt(
+                cleanPath.length - 1
+            ) !== '/'
+        ) {
+            cleanPath += '/';
+        }
+
+        return cleanPath;
+    }
+
+    function pagePath(
+        base,
+        page
+    ) {
+        base =
+            baseSectionPath(
+                base
+            );
+
+        if (
+            page <= 1
+        ) {
+            return base;
+        }
+
+        return (
+            base +
+            'page/' +
+            page +
+            '/'
+        );
+    }
+
+    function parsePaging(
+        doc,
+        currentPath
+    ) {
+        var current =
+            parsePageNumber(
+                currentPath
+            );
+
+        var maxPage =
+            current;
+
+        var anchors =
+            doc
+                .querySelectorAll(
+                    'a[href]'
+                );
+
+        var i;
+
+        for (
+            i = 0;
+            i < anchors.length;
+            i++
+        ) {
+            var href =
+                toPath(
+                    anchors[i]
+                        .getAttribute(
+                            'href'
+                        ) ||
+                    ''
+                );
+
+            var m =
+                href.match(
+                    /\/page\/(\d+)\/?/i
+                );
+
+            if (m) {
+                maxPage =
+                    Math.max(
+                        maxPage,
+                        safeInt(
+                            m[1],
+                            current
+                        )
+                    );
+            }
+        }
+
+        return {
+            current:
+                current,
+
+            max:
+                maxPage,
+
+            previous:
+                current > 1
+                    ? pagePath(
+                        currentPath,
+                        current - 1
+                    )
+                    : '',
+
+            next:
+                maxPage > current
+                    ? pagePath(
+                        currentPath,
+                        current + 1
+                    )
+                    : ''
+        };
+    }
+
+    function extractAvailableFromTitle(
+        title
+    ) {
+        title =
+            clean(
+                title
+            );
+
+        var best =
+            0;
+
+        var re =
+            /\[?\s*1\s*-\s*(\d{1,4})\s*(?:из\s*\d+\+?)?/ig;
+
+        var match;
+
+        while (
+            (
+                match =
+                    re.exec(
+                        title
+                    )
+            )
+        ) {
+            best =
+                Math.max(
+                    best,
+                    safeInt(
+                        match[1],
+                        0
+                    )
+                );
+        }
+
+        return best;
+    }
+
+    function parseCatalog(
+        html,
+        currentPath
+    ) {
         var parser =
             new DOMParser();
 
@@ -456,6 +691,12 @@
                 doc
             );
 
+        var paging =
+            parsePaging(
+                doc,
+                currentPath
+            );
+
         var headings =
             doc
                 .querySelectorAll(
@@ -464,7 +705,6 @@
 
         var items = [];
         var seen = {};
-
         var i;
 
         for (
@@ -492,9 +732,9 @@
                 );
 
             if (
-                !href ||
-                !/\/tip\/[^/]+\/[^?#]+\.html/i
-                    .test(href)
+                !sameAnimeUrl(
+                    href
+                )
             ) {
                 continue;
             }
@@ -510,26 +750,25 @@
                 true;
 
             var container =
-                findContainer(
+                findArticleContainer(
                     anchor.parentElement ||
                     anchor
                 );
 
             var text =
-                clean(
+                textOf(
                     container
-                        .textContent ||
-                    ''
                 );
 
             items.push({
-                title: title,
+                title:
+                    title,
 
                 href:
                     href,
 
                 poster:
-                    findPoster(
+                    findPosterInContainer(
                         container,
                         href
                     ),
@@ -562,20 +801,612 @@
                     firstMatch(
                         text,
                         /Описание:\s*(.+?)(?=\s+Смотреть\s|\s+Категории:|$)/i
+                    ),
+
+                availableEpisodes:
+                    extractAvailableFromTitle(
+                        title
                     )
             });
         }
 
         return {
-            items: items,
-            menu: menu
+            items:
+                items,
+
+            menu:
+                menu,
+
+            paging:
+                paging
         };
+    }
+
+    function isUsefulEpisodeHref(
+        value,
+        pagePath
+    ) {
+        value =
+            clean(
+                value
+            );
+
+        if (!value) {
+            return '';
+        }
+
+        if (
+            /^javascript:/i
+                .test(value)
+        ) {
+            return '';
+        }
+
+        if (
+            value === '#'
+        ) {
+            return '';
+        }
+
+        var path =
+            toPath(
+                value
+            );
+
+        var current =
+            toPath(
+                pagePath
+            );
+
+        if (
+            path === current
+        ) {
+            return '';
+        }
+
+        return absoluteUrl(
+            value
+        );
+    }
+
+    function parseEpisodes(
+        doc,
+        pagePath,
+        fallbackItem,
+        episodeText
+    ) {
+        var episodes = [];
+        var seen = {};
+
+        var candidates =
+            doc
+                .querySelectorAll(
+                    'a,button,option,li,span,div,[data-episode],[data-series],[data-seria]'
+                );
+
+        var i;
+
+        function add(
+            number,
+            label,
+            url
+        ) {
+            number =
+                safeInt(
+                    number,
+                    0
+                );
+
+            if (
+                number <= 0 ||
+                number > 2000
+            ) {
+                return;
+            }
+
+            if (
+                seen[number]
+            ) {
+                return;
+            }
+
+            seen[number] =
+                true;
+
+            episodes.push({
+                number:
+                    number,
+
+                title:
+                    clean(
+                        label
+                    ) ||
+                    (
+                        number +
+                        ' серия'
+                    ),
+
+                href:
+                    url ||
+                    ''
+            });
+        }
+
+        for (
+            i = 0;
+            i < candidates.length;
+            i++
+        ) {
+            var element =
+                candidates[i];
+
+            var label =
+                textOf(
+                    element
+                );
+
+            var match =
+                label.match(
+                    /^(\d{1,4})\s*(?:серия|серии|эпизод|episode)\s*$/i
+                );
+
+            var number =
+                0;
+
+            if (match) {
+                number =
+                    safeInt(
+                        match[1],
+                        0
+                    );
+            }
+
+            else {
+                var attr =
+                    element
+                        .getAttribute(
+                            'data-episode'
+                        ) ||
+                    element
+                        .getAttribute(
+                            'data-series'
+                        ) ||
+                    element
+                        .getAttribute(
+                            'data-seria'
+                        ) ||
+                    '';
+
+                if (
+                    /^\d{1,4}$/
+                        .test(
+                            clean(
+                                attr
+                            )
+                        )
+                ) {
+                    number =
+                        safeInt(
+                            attr,
+                            0
+                        );
+
+                    label =
+                        number +
+                        ' серия';
+                }
+            }
+
+            if (!number) {
+                continue;
+            }
+
+            var href =
+                element
+                    .getAttribute(
+                        'href'
+                    ) ||
+                element
+                    .getAttribute(
+                        'data-href'
+                    ) ||
+                element
+                    .getAttribute(
+                        'data-url'
+                    ) ||
+                '';
+
+            add(
+                number,
+                label,
+                isUsefulEpisodeHref(
+                    href,
+                    pagePath
+                )
+            );
+        }
+
+        episodes.sort(
+            function (a, b) {
+                return (
+                    a.number -
+                    b.number
+                );
+            }
+        );
+
+        if (
+            episodes.length
+        ) {
+            return episodes;
+        }
+
+        var maxEpisode =
+            0;
+
+        var text =
+            clean(
+                episodeText ||
+                ''
+            );
+
+        var rangeRe =
+            /\b1\s*-\s*(\d{1,4})\b/g;
+
+        var rangeMatch;
+
+        while (
+            (
+                rangeMatch =
+                    rangeRe.exec(
+                        text
+                    )
+            )
+        ) {
+            maxEpisode =
+                Math.max(
+                    maxEpisode,
+                    safeInt(
+                        rangeMatch[1],
+                        0
+                    )
+                );
+        }
+
+        if (
+            !maxEpisode &&
+            fallbackItem &&
+            fallbackItem.availableEpisodes
+        ) {
+            maxEpisode =
+                safeInt(
+                    fallbackItem
+                        .availableEpisodes,
+                    0
+                );
+        }
+
+        if (
+            !maxEpisode
+        ) {
+            var direct =
+                text.match(
+                    /\b(\d{1,4})\+?\b/
+                );
+
+            if (direct) {
+                maxEpisode =
+                    safeInt(
+                        direct[1],
+                        0
+                    );
+            }
+        }
+
+        maxEpisode =
+            clamp(
+                maxEpisode,
+                0,
+                500
+            );
+
+        for (
+            i = 1;
+            i <= maxEpisode;
+            i++
+        ) {
+            add(
+                i,
+                i + ' серия',
+                ''
+            );
+        }
+
+        return episodes;
+    }
+
+    function parseDetail(
+        html,
+        fallbackItem
+    ) {
+        var parser =
+            new DOMParser();
+
+        var doc =
+            parser
+                .parseFromString(
+                    String(
+                        html || ''
+                    ),
+                    'text/html'
+                );
+
+        var bodyText =
+            textOf(
+                doc.body
+            );
+
+        var pagePath =
+            fallbackItem &&
+            fallbackItem.href
+                ? fallbackItem.href
+                : '/';
+
+        var h1 =
+            doc
+                .querySelector(
+                    'h1'
+                );
+
+        var title =
+            fallbackItem &&
+            fallbackItem.title
+                ? clean(
+                    fallbackItem.title
+                )
+                : '';
+
+        if (
+            h1 &&
+            clean(
+                h1.textContent
+            )
+        ) {
+            title =
+                clean(
+                    h1.textContent
+                );
+        }
+
+        if (!title) {
+            title =
+                clean(
+                    doc.title ||
+                    ''
+                )
+                .replace(
+                    /\s*[|—-].*$/,
+                    ''
+                ) ||
+                'AnimeVost';
+        }
+
+        var poster =
+            fallbackItem &&
+            fallbackItem.poster
+                ? fallbackItem.poster
+                : '';
+
+        if (!poster) {
+            try {
+                poster =
+                    findPosterInContainer(
+                        doc.body,
+                        pagePath
+                    );
+            }
+            catch (e) {}
+        }
+
+        var originalTitle =
+            firstMatch(
+                bodyText,
+                /(?:Оригинальное название|Оригинал(?:ьное название)?|Английское название):\s*(.+?)(?=\s+(?:Год выхода|Год|Жанр|Тип|Количество серий|Режисс[её]р|Длительность|Рейтинг|Описание):|$)/i
+            );
+
+        var year =
+            firstMatch(
+                bodyText,
+                /(?:Год выхода|Год):\s*([^Ж]+?)(?=\s+Жанр:|$)/i
+            );
+
+        var genre =
+            firstMatch(
+                bodyText,
+                /Жанр:\s*(.+?)(?=\s+Тип:|$)/i
+            );
+
+        var type =
+            firstMatch(
+                bodyText,
+                /Тип:\s*(.+?)(?=\s+Количество серий:|\s+Режисс[её]р:|\s+Длительность:|\s+Рейтинг:|$)/i
+            );
+
+        var episodeText =
+            firstMatch(
+                bodyText,
+                /Количество серий:\s*(.+?)(?=\s+Режисс[её]р:|\s+Длительность:|\s+Рейтинг:|\s+Описание:|$)/i
+            );
+
+        var director =
+            firstMatch(
+                bodyText,
+                /Режисс[её]р:\s*(.+?)(?=\s+(?:Длительность|Рейтинг|Описание|Категории):|$)/i
+            );
+
+        var duration =
+            firstMatch(
+                bodyText,
+                /(?:Длительность|Продолжительность):\s*(.+?)(?=\s+(?:Рейтинг|Описание|Категории):|$)/i
+            );
+
+        var description =
+            firstMatch(
+                bodyText,
+                /Описание:\s*(.+?)(?=\s+(?:Теги:|Категории:|Правила для комментаторов|Комментарии)|$)/i
+            );
+
+        if (
+            !year &&
+            fallbackItem
+        ) {
+            year =
+                fallbackItem.year ||
+                '';
+        }
+
+        if (
+            !genre &&
+            fallbackItem
+        ) {
+            genre =
+                fallbackItem.genre ||
+                '';
+        }
+
+        if (
+            !type &&
+            fallbackItem
+        ) {
+            type =
+                fallbackItem.type ||
+                '';
+        }
+
+        if (
+            !episodeText &&
+            fallbackItem
+        ) {
+            episodeText =
+                fallbackItem.episodes ||
+                '';
+        }
+
+        if (
+            !description &&
+            fallbackItem
+        ) {
+            description =
+                fallbackItem.description ||
+                '';
+        }
+
+        var rating =
+            firstMatch(
+                bodyText,
+                /Рейтинг:\s*([0-9]+(?:[\.,][0-9]+)?)/i
+            );
+
+        rating =
+            rating.replace(
+                ',',
+                '.'
+            );
+
+        return {
+            title:
+                title,
+
+            originalTitle:
+                originalTitle,
+
+            href:
+                pagePath,
+
+            poster:
+                poster,
+
+            year:
+                year,
+
+            genre:
+                genre,
+
+            type:
+                type,
+
+            episodesText:
+                episodeText,
+
+            director:
+                director,
+
+            duration:
+                duration,
+
+            rating:
+                rating,
+
+            description:
+                description,
+
+            episodes:
+                parseEpisodes(
+                    doc,
+                    pagePath,
+                    fallbackItem,
+                    episodeText
+                )
+        };
+    }
+
+    function openSitePage(url) {
+        url =
+            absoluteUrl(
+                url ||
+                '/'
+            );
+
+        if (
+            url.indexOf(
+                ORIGIN
+            ) !== 0
+        ) {
+            notify(
+                'AnimeVost: недопустимая ссылка'
+            );
+
+            return;
+        }
+
+        try {
+            var popup =
+                window.open(
+                    url,
+                    '_blank'
+                );
+
+            if (popup) {
+                return;
+            }
+        }
+        catch (e) {}
+
+        try {
+            window.location.href =
+                url;
+        }
+        catch (e2) {
+            notify(
+                'Не удалось открыть AnimeVost'
+            );
+        }
     }
 
     function injectStyle() {
         if (
             $(
-                '#animevost-v032-style'
+                '#animevost-v040-style'
             ).length
         ) {
             return;
@@ -583,7 +1414,7 @@
 
         var css =
 
-            '.animevost-v032-viewport{' +
+            '.av40-viewport{' +
                 'height:calc(100vh - 6.2em);' +
                 'overflow-y:auto;' +
                 'overflow-x:hidden;' +
@@ -591,29 +1422,32 @@
                 '-webkit-overflow-scrolling:touch;' +
             '}' +
 
-            '.animevost-v032-viewport::-webkit-scrollbar{' +
+            '.av40-viewport::-webkit-scrollbar{' +
                 'width:0;' +
                 'height:0;' +
             '}' +
 
-            '.animevost-v032{' +
+            '.av40-page{' +
                 'padding:1.3em 2.2em 5em;' +
                 'box-sizing:border-box;' +
             '}' +
 
-            '.animevost-v032__title{' +
+            '.av40-title{' +
                 'font-size:2em;' +
                 'font-weight:600;' +
                 'margin:.2em 0 .75em;' +
+                'line-height:1.15;' +
             '}' +
 
-            '.animevost-v032__nav{' +
+            '.av40-nav{' +
                 'display:flex;' +
                 'flex-wrap:wrap;' +
                 'margin-bottom:1.2em;' +
             '}' +
 
-            '.animevost-v032__navbtn{' +
+            '.av40-navbtn,' +
+            '.av40-action,' +
+            '.av40-pagebtn{' +
                 'padding:.7em 1.05em;' +
                 'margin:0 .55em .55em 0;' +
                 'background:rgba(255,255,255,.10);' +
@@ -621,24 +1455,27 @@
                 'font-size:1.05em;' +
             '}' +
 
-            '.animevost-v032__navbtn.focus{' +
+            '.av40-navbtn.focus,' +
+            '.av40-action.focus,' +
+            '.av40-pagebtn.focus,' +
+            '.av40-episode.focus{' +
                 'background:#fff;' +
                 'color:#111;' +
             '}' +
 
-            '.animevost-v032__status{' +
+            '.av40-status{' +
                 'padding:1.2em 0;' +
                 'font-size:1.15em;' +
                 'opacity:.8;' +
             '}' +
 
-            '.animevost-v032__grid{' +
+            '.av40-grid{' +
                 'display:flex;' +
                 'flex-wrap:wrap;' +
                 'align-items:flex-start;' +
             '}' +
 
-            '.animevost-v032__card{' +
+            '.av40-card{' +
                 'width:12.2em;' +
                 'margin:0 1.05em 1.3em 0;' +
                 'border-radius:.55em;' +
@@ -647,12 +1484,12 @@
                 'box-sizing:border-box;' +
             '}' +
 
-            '.animevost-v032__card.focus{' +
+            '.av40-card.focus{' +
                 'background:rgba(255,255,255,.18);' +
                 'transform:scale(1.025);' +
             '}' +
 
-            '.animevost-v032__poster{' +
+            '.av40-poster{' +
                 'width:100%;' +
                 'height:17.4em;' +
                 'border-radius:.4em;' +
@@ -663,28 +1500,28 @@
                 'justify-content:center;' +
             '}' +
 
-            '.animevost-v032__poster img{' +
+            '.av40-poster img{' +
                 'width:100%;' +
                 'height:100%;' +
                 'object-fit:cover;' +
                 'display:block;' +
             '}' +
 
-            '.animevost-v032__fallback{' +
+            '.av40-fallback{' +
                 'font-size:1em;' +
                 'opacity:.55;' +
                 'text-align:center;' +
                 'padding:1em;' +
             '}' +
 
-            '.animevost-v032__name{' +
+            '.av40-name{' +
                 'font-size:1.03em;' +
                 'line-height:1.25;' +
                 'margin-top:.6em;' +
                 'min-height:2.5em;' +
             '}' +
 
-            '.animevost-v032__meta{' +
+            '.av40-meta{' +
                 'font-size:.83em;' +
                 'line-height:1.3;' +
                 'opacity:.62;' +
@@ -692,28 +1529,20 @@
                 'min-height:2.1em;' +
             '}' +
 
-            '.animevost-v032-detail-viewport{' +
-                'height:calc(100vh - 6.2em);' +
-                'overflow-y:auto;' +
-                'overflow-x:hidden;' +
-                'box-sizing:border-box;' +
+            '.av40-pages{' +
+                'display:flex;' +
+                'flex-wrap:wrap;' +
+                'margin-top:.4em;' +
+                'padding-bottom:1em;' +
             '}' +
 
-            '.animevost-v032-detail-viewport::-webkit-scrollbar{' +
-                'width:0;' +
-                'height:0;' +
-            '}' +
-
-            '.animevost-v032-detail{' +
-                'padding:1.5em 2.6em 5em;' +
-            '}' +
-
-            '.animevost-v032-detail__wrap{' +
+            '.av40-detail-top{' +
                 'display:flex;' +
                 'align-items:flex-start;' +
+                'margin-bottom:1.4em;' +
             '}' +
 
-            '.animevost-v032-detail__poster{' +
+            '.av40-detail-poster{' +
                 'width:15em;' +
                 'min-width:15em;' +
                 'height:21em;' +
@@ -723,48 +1552,691 @@
                 'background:rgba(255,255,255,.08);' +
             '}' +
 
-            '.animevost-v032-detail__poster img{' +
+            '.av40-detail-poster img{' +
                 'width:100%;' +
                 'height:100%;' +
                 'object-fit:cover;' +
             '}' +
 
-            '.animevost-v032-detail__body{' +
-                'max-width:62em;' +
+            '.av40-detail-body{' +
+                'max-width:68em;' +
             '}' +
 
-            '.animevost-v032-detail__title{' +
-                'font-size:2em;' +
-                'font-weight:600;' +
-                'line-height:1.2;' +
-                'margin-bottom:.7em;' +
+            '.av40-detail-original{' +
+                'font-size:1.05em;' +
+                'opacity:.65;' +
+                'margin-top:-.45em;' +
+                'margin-bottom:.9em;' +
             '}' +
 
-            '.animevost-v032-detail__meta{' +
-                'font-size:1.08em;' +
+            '.av40-detail-meta{' +
+                'font-size:1.04em;' +
                 'line-height:1.55;' +
                 'opacity:.78;' +
                 'margin-bottom:1em;' +
             '}' +
 
-            '.animevost-v032-detail__description{' +
+            '.av40-detail-description{' +
                 'font-size:1.05em;' +
                 'line-height:1.55;' +
+                'white-space:normal;' +
             '}' +
 
-            '.animevost-v032-detail__note{' +
-                'margin-top:1.4em;' +
-                'padding:1em 1.2em;' +
-                'background:rgba(255,255,255,.08);' +
+            '.av40-actions{' +
+                'display:flex;' +
+                'flex-wrap:wrap;' +
+                'margin:1.25em 0 1.3em;' +
+            '}' +
+
+            '.av40-section-title{' +
+                'font-size:1.45em;' +
+                'font-weight:600;' +
+                'margin:1.2em 0 .75em;' +
+            '}' +
+
+            '.av40-episodes{' +
+                'display:flex;' +
+                'flex-wrap:wrap;' +
+                'align-items:flex-start;' +
+            '}' +
+
+            '.av40-episode{' +
+                'min-width:7.3em;' +
+                'text-align:center;' +
+                'padding:.72em .85em;' +
+                'margin:0 .55em .55em 0;' +
+                'background:rgba(255,255,255,.09);' +
+                'border-radius:.42em;' +
+                'box-sizing:border-box;' +
+            '}' +
+
+            '.av40-episode.selected{' +
+                'box-shadow:' +
+                'inset 0 0 0 .16em ' +
+                'rgba(255,255,255,.65);' +
+            '}' +
+
+            '.av40-note{' +
+                'margin-top:1.2em;' +
+                'padding:1em 1.15em;' +
+                'background:rgba(255,255,255,.07);' +
                 'border-radius:.45em;' +
-                'opacity:.8;' +
+                'opacity:.72;' +
+                'font-size:.96em;' +
+                'line-height:1.45;' +
             '}';
 
         $('head').append(
-            '<style id="animevost-v032-style">' +
+            '<style id="animevost-v040-style">' +
                 css +
             '</style>'
         );
+    }
+
+    function createPosterBox(
+        className,
+        posterUrl
+    ) {
+        var box =
+            $(
+                '<div class="' +
+                    className +
+                '"></div>'
+            );
+
+        if (posterUrl) {
+            var img =
+                $('<img alt="">')
+                    .attr(
+                        'src',
+                        posterUrl
+                    );
+
+            img.on(
+                'error',
+                function () {
+                    box
+                        .empty()
+                        .append(
+                            '<div class="av40-fallback">' +
+                                'AnimeVost' +
+                            '</div>'
+                        );
+                }
+            );
+
+            box.append(
+                img
+            );
+        }
+
+        else {
+            box.append(
+                '<div class="av40-fallback">' +
+                    'AnimeVost' +
+                '</div>'
+            );
+        }
+
+        return box;
+    }
+
+    function ensureVisible(
+        viewport,
+        element
+    ) {
+        if (
+            !viewport ||
+            !viewport[0] ||
+            !element
+        ) {
+            return;
+        }
+
+        var vp =
+            viewport[0];
+
+        var er =
+            element
+                .getBoundingClientRect();
+
+        var vr =
+            vp
+                .getBoundingClientRect();
+
+        var topPad =
+            22;
+
+        var bottomPad =
+            40;
+
+        if (
+            er.bottom >
+            vr.bottom -
+            bottomPad
+        ) {
+            vp.scrollTop +=
+                er.bottom -
+                (
+                    vr.bottom -
+                    bottomPad
+                );
+        }
+
+        else if (
+            er.top <
+            vr.top +
+            topPad
+        ) {
+            vp.scrollTop -=
+                (
+                    vr.top +
+                    topPad
+                ) -
+                er.top;
+        }
+    }
+
+    function visibleSelectors(
+        root
+    ) {
+        var result = [];
+
+        root
+            .find(
+                '.selector'
+            )
+            .each(
+                function () {
+                    if (
+                        this &&
+                        this.offsetParent !==
+                        null
+                    ) {
+                        result.push(
+                            this
+                        );
+                    }
+                }
+            );
+
+        return result;
+    }
+
+    function groupRows(
+        elements
+    ) {
+        var rows = [];
+        var tolerance = 10;
+        var i;
+
+        for (
+            i = 0;
+            i < elements.length;
+            i++
+        ) {
+            var el =
+                elements[i];
+
+            var rect =
+                el
+                    .getBoundingClientRect();
+
+            var top =
+                rect.top;
+
+            var found =
+                null;
+
+            var r;
+
+            for (
+                r = 0;
+                r < rows.length;
+                r++
+            ) {
+                if (
+                    Math.abs(
+                        rows[r].top -
+                        top
+                    ) <= tolerance
+                ) {
+                    found =
+                        rows[r];
+
+                    break;
+                }
+            }
+
+            if (!found) {
+                found = {
+                    top:
+                        top,
+
+                    items:
+                        []
+                };
+
+                rows.push(
+                    found
+                );
+            }
+
+            found.items.push(
+                el
+            );
+        }
+
+        rows.sort(
+            function (a, b) {
+                return (
+                    a.top -
+                    b.top
+                );
+            }
+        );
+
+        for (
+            i = 0;
+            i < rows.length;
+            i++
+        ) {
+            rows[i]
+                .items
+                .sort(
+                    function (a, b) {
+                        return (
+                            a
+                                .getBoundingClientRect()
+                                .left -
+                            b
+                                .getBoundingClientRect()
+                                .left
+                        );
+                    }
+                );
+        }
+
+        return rows;
+    }
+
+    function nearestByCenter(
+        items,
+        current
+    ) {
+        if (
+            !items ||
+            !items.length ||
+            !current
+        ) {
+            return (
+                items &&
+                items.length
+            )
+                ? items[0]
+                : null;
+        }
+
+        var cr =
+            current
+                .getBoundingClientRect();
+
+        var cx =
+            cr.left +
+            cr.width /
+            2;
+
+        var best =
+            items[0];
+
+        var bestDistance =
+            Infinity;
+
+        var i;
+
+        for (
+            i = 0;
+            i < items.length;
+            i++
+        ) {
+            var ir =
+                items[i]
+                    .getBoundingClientRect();
+
+            var ix =
+                ir.left +
+                ir.width /
+                2;
+
+            var distance =
+                Math.abs(
+                    ix -
+                    cx
+                );
+
+            if (
+                distance <
+                bestDistance
+            ) {
+                bestDistance =
+                    distance;
+
+                best =
+                    items[i];
+            }
+        }
+
+        return best;
+    }
+
+    function createNavigation(
+        root,
+        viewport,
+        onEdgeLeft,
+        onEdgeUp
+    ) {
+        var last =
+            null;
+
+        function current() {
+            if (
+                last &&
+                document
+                    .documentElement
+                    .contains(
+                        last
+                    )
+            ) {
+                return last;
+            }
+
+            var focused =
+                root
+                    .find(
+                        '.selector.focus'
+                    )[0];
+
+            if (focused) {
+                return focused;
+            }
+
+            var selectors =
+                visibleSelectors(
+                    root
+                );
+
+            return selectors.length
+                ? selectors[0]
+                : null;
+        }
+
+        function focus(
+            element
+        ) {
+            if (!element) {
+                return false;
+            }
+
+            last =
+                element;
+
+            try {
+                Lampa.Controller
+                    .collectionFocus(
+                        element,
+                        viewport
+                    );
+            }
+
+            catch (e) {
+                try {
+                    Lampa.Controller
+                        .focus(
+                            element
+                        );
+                }
+                catch (e2) {}
+            }
+
+            ensureVisible(
+                viewport,
+                element
+            );
+
+            return true;
+        }
+
+        function move(
+            direction
+        ) {
+            var selectors =
+                visibleSelectors(
+                    root
+                );
+
+            var cur =
+                current();
+
+            if (
+                !selectors.length ||
+                !cur
+            ) {
+                return false;
+            }
+
+            var rows =
+                groupRows(
+                    selectors
+                );
+
+            var rowIndex =
+                -1;
+
+            var colIndex =
+                -1;
+
+            var r;
+            var c;
+
+            for (
+                r = 0;
+                r < rows.length;
+                r++
+            ) {
+                for (
+                    c = 0;
+                    c <
+                    rows[r]
+                        .items
+                        .length;
+                    c++
+                ) {
+                    if (
+                        rows[r]
+                            .items[c] ===
+                        cur
+                    ) {
+                        rowIndex =
+                            r;
+
+                        colIndex =
+                            c;
+
+                        break;
+                    }
+                }
+
+                if (
+                    rowIndex >=
+                    0
+                ) {
+                    break;
+                }
+            }
+
+            if (
+                rowIndex <
+                0
+            ) {
+                return focus(
+                    selectors[0]
+                );
+            }
+
+            if (
+                direction ===
+                'left'
+            ) {
+                if (
+                    colIndex >
+                    0
+                ) {
+                    return focus(
+                        rows[rowIndex]
+                            .items[
+                                colIndex -
+                                1
+                            ]
+                    );
+                }
+
+                if (
+                    typeof onEdgeLeft ===
+                    'function'
+                ) {
+                    onEdgeLeft();
+                }
+
+                return false;
+            }
+
+            if (
+                direction ===
+                'right'
+            ) {
+                if (
+                    colIndex <
+                    rows[rowIndex]
+                        .items
+                        .length -
+                    1
+                ) {
+                    return focus(
+                        rows[rowIndex]
+                            .items[
+                                colIndex +
+                                1
+                            ]
+                    );
+                }
+
+                return false;
+            }
+
+            if (
+                direction ===
+                'up'
+            ) {
+                if (
+                    rowIndex >
+                    0
+                ) {
+                    return focus(
+                        nearestByCenter(
+                            rows[
+                                rowIndex -
+                                1
+                            ].items,
+                            cur
+                        )
+                    );
+                }
+
+                if (
+                    typeof onEdgeUp ===
+                    'function'
+                ) {
+                    onEdgeUp();
+                }
+
+                return false;
+            }
+
+            if (
+                direction ===
+                'down'
+            ) {
+                if (
+                    rowIndex <
+                    rows.length -
+                    1
+                ) {
+                    return focus(
+                        nearestByCenter(
+                            rows[
+                                rowIndex +
+                                1
+                            ].items,
+                            cur
+                        )
+                    );
+                }
+
+                return false;
+            }
+
+            return false;
+        }
+
+        function bindFocusTracking() {
+            root
+                .find(
+                    '.selector'
+                )
+                .off(
+                    'hover:focus.' +
+                    NS
+                )
+                .on(
+                    'hover:focus.' +
+                    NS,
+
+                    function () {
+                        last =
+                            this;
+
+                        ensureVisible(
+                            viewport,
+                            this
+                        );
+                    }
+                );
+        }
+
+        return {
+            focus:
+                focus,
+
+            move:
+                move,
+
+            current:
+                current,
+
+            bind:
+                bindFocusTracking,
+
+            getLast:
+                function () {
+                    return last;
+                },
+
+            setLast:
+                function (value) {
+                    last =
+                        value;
+                }
+        };
     }
 
     function openCatalog(
@@ -772,14 +2244,15 @@
         title
     ) {
         Lampa.Activity.push({
-            url: '',
+            url:
+                '',
 
             title:
                 title ||
                 'AnimeVost',
 
             component:
-                CATALOG,
+                COMPONENT_CATALOG,
 
             av_path:
                 path ||
@@ -788,6 +2261,28 @@
             av_title:
                 title ||
                 'AnimeVost',
+
+            page:
+                1
+        });
+    }
+
+    function openDetail(
+        item
+    ) {
+        Lampa.Activity.push({
+            url:
+                '',
+
+            title:
+                item.title ||
+                'AnimeVost',
+
+            component:
+                COMPONENT_DETAIL,
+
+            av_item:
+                item,
 
             page:
                 1
@@ -844,312 +2339,30 @@
         });
     }
 
-    /*
-     * Detail page
-     */
-
-    function DetailComponent(
-        object
-    ) {
-        var viewport =
-            $(
-                '<div class="' +
-                'animevost-v032-detail-viewport' +
-                '"></div>'
-            );
-
-        var root =
-            $(
-                '<div class="' +
-                'animevost-v032-detail' +
-                '"></div>'
-            );
-
-        var item =
-            object.av_item ||
-            {};
-
-        this.create =
-            function () {
-
-                var wrap =
-                    $(
-                        '<div class="' +
-                        'animevost-v032-detail__wrap' +
-                        '"></div>'
-                    );
-
-                var poster =
-                    $(
-                        '<div class="' +
-                        'animevost-v032-detail__poster' +
-                        '"></div>'
-                    );
-
-                var body =
-                    $(
-                        '<div class="' +
-                        'animevost-v032-detail__body' +
-                        '"></div>'
-                    );
-
-                if (
-                    item.poster
-                ) {
-                    var image =
-                        $('<img alt="">')
-                            .attr(
-                                'src',
-                                item.poster
-                            );
-
-                    image.on(
-                        'error',
-                        function () {
-                            poster
-                                .empty()
-                                .append(
-                                    '<div class="' +
-                                    'animevost-v032__fallback' +
-                                    '">' +
-                                    'AnimeVost' +
-                                    '</div>'
-                                );
-                        }
-                    );
-
-                    poster.append(
-                        image
-                    );
-                }
-
-                else {
-                    poster.append(
-                        '<div class="' +
-                        'animevost-v032__fallback' +
-                        '">' +
-                        'AnimeVost' +
-                        '</div>'
-                    );
-                }
-
-                body.append(
-                    $(
-                        '<div class="' +
-                        'animevost-v032-detail__title' +
-                        '"></div>'
-                    ).text(
-                        item.title ||
-                        'AnimeVost'
-                    )
-                );
-
-                var meta = [];
-
-                if (
-                    item.year
-                ) {
-                    meta.push(
-                        'Год: ' +
-                        item.year
-                    );
-                }
-
-                if (
-                    item.type
-                ) {
-                    meta.push(
-                        'Тип: ' +
-                        item.type
-                    );
-                }
-
-                if (
-                    item.episodes
-                ) {
-                    meta.push(
-                        'Серии: ' +
-                        item.episodes
-                    );
-                }
-
-                if (
-                    item.genre
-                ) {
-                    meta.push(
-                        'Жанр: ' +
-                        item.genre
-                    );
-                }
-
-                body.append(
-                    $(
-                        '<div class="' +
-                        'animevost-v032-detail__meta' +
-                        '"></div>'
-                    ).text(
-                        meta.join(
-                            '  •  '
-                        )
-                    )
-                );
-
-                body.append(
-                    $(
-                        '<div class="' +
-                        'animevost-v032-detail__description' +
-                        '"></div>'
-                    ).text(
-                        item.description ||
-                        'Описание не найдено.'
-                    )
-                );
-
-                body.append(
-                    '<div class="' +
-                    'animevost-v032-detail__note' +
-                    '">' +
-                    'V0.3.2: каталог использует собственную вертикальную прокрутку. ' +
-                    'Серии добавим после проверки навигации.' +
-                    '</div>'
-                );
-
-                wrap
-                    .append(
-                        poster
-                    )
-                    .append(
-                        body
-                    );
-
-                root.append(
-                    wrap
-                );
-
-                viewport.append(
-                    root
-                );
-
-                return this.render();
-            };
-
-        this.start =
-            function () {
-
-                Lampa.Controller.add(
-                    'content',
-
-                    {
-                        toggle:
-                            function () {
-                                Lampa.Controller
-                                    .collectionSet(
-                                        viewport
-                                    );
-                            },
-
-                        left:
-                            function () {
-                                Lampa.Controller
-                                    .toggle(
-                                        'menu'
-                                    );
-                            },
-
-                        up:
-                            function () {
-                                viewport[0]
-                                    .scrollTop =
-                                    Math.max(
-                                        0,
-                                        viewport[0]
-                                            .scrollTop -
-                                            260
-                                    );
-                            },
-
-                        down:
-                            function () {
-                                viewport[0]
-                                    .scrollTop +=
-                                    260;
-                            },
-
-                        back:
-                            function () {
-                                Lampa.Activity
-                                    .backward();
-                            }
-                    }
-                );
-
-                Lampa.Controller
-                    .toggle(
-                        'content'
-                    );
-            };
-
-        this.pause =
-            function () {};
-
-        this.stop =
-            function () {};
-
-        this.render =
-            function () {
-                return viewport;
-            };
-
-        this.destroy =
-            function () {
-                viewport.remove();
-                root.remove();
-            };
-    }
-
-    /*
-     * Catalogue
-     */
-
     function CatalogComponent(
         object
     ) {
         var network =
             new Lampa.Reguest();
 
-        /*
-         * Important change:
-         *
-         * This is now a REAL
-         * vertically scrollable
-         * browser container.
-         */
+        var alive =
+            false;
 
         var viewport =
             $(
-                '<div class="' +
-                'animevost-v032-viewport' +
-                '"></div>'
+                '<div class="av40-viewport"></div>'
             );
 
         var root =
             $(
-                '<div class="' +
-                'animevost-v032' +
-                '"></div>'
+                '<div class="av40-page"></div>'
             );
 
-        var last =
-            null;
-
-        var parsedMenu = {
+        var menu = {
             genres: [],
             types: [],
             years: []
         };
-
-        var self =
-            this;
 
         var path =
             object.av_path ||
@@ -1159,606 +2372,62 @@
             object.av_title ||
             'AnimeVost';
 
-        function getCards() {
-            return root
-                .find(
-                    '.animevost-v032__card'
+        var self =
+            this;
+
+        var nav;
+
+        function renderLoading() {
+            root.empty();
+
+            viewport[0]
+                .scrollTop =
+                0;
+
+            root.append(
+                $(
+                    '<div class="av40-title"></div>'
+                ).text(
+                    title
                 )
-                .toArray();
-        }
-
-        function getNavButtons() {
-            return root
-                .find(
-                    '.animevost-v032__navbtn'
-                )
-                .toArray();
-        }
-
-        function getCurrent() {
-
-            if (
-                last &&
-                document
-                    .documentElement
-                    .contains(
-                        last
-                    )
-            ) {
-                return last;
-            }
-
-            var focused =
-                root
-                    .find(
-                        '.selector.focus'
-                    )[0];
-
-            if (
-                focused
-            ) {
-                return focused;
-            }
-
-            var nav =
-                getNavButtons();
-
-            if (
-                nav.length
-            ) {
-                return nav[0];
-            }
-
-            var cards =
-                getCards();
-
-            return cards.length
-                ? cards[0]
-                : null;
-        }
-
-        /*
-         * This actually scrolls
-         * the catalogue viewport.
-         */
-
-        function ensureVisible(
-            element
-        ) {
-            if (
-                !element ||
-                !viewport[0]
-            ) {
-                return;
-            }
-
-            var vp =
-                viewport[0];
-
-            var er =
-                element
-                    .getBoundingClientRect();
-
-            var vr =
-                vp
-                    .getBoundingClientRect();
-
-            var topPad =
-                22;
-
-            var bottomPad =
-                38;
-
-            /*
-             * Focused row is below
-             * visible TV area.
-             */
-
-            if (
-                er.bottom >
-                vr.bottom -
-                bottomPad
-            ) {
-                vp.scrollTop +=
-                    er.bottom -
-                    (
-                        vr.bottom -
-                        bottomPad
-                    );
-            }
-
-            /*
-             * Focused row is above
-             * visible TV area.
-             */
-
-            else if (
-                er.top <
-                vr.top +
-                topPad
-            ) {
-                vp.scrollTop -=
-                    (
-                        vr.top +
-                        topPad
-                    ) -
-                    er.top;
-            }
-        }
-
-        function focusElement(
-            element
-        ) {
-            if (
-                !element
-            ) {
-                return false;
-            }
-
-            last =
-                element;
-
-            try {
-                Lampa.Controller
-                    .collectionFocus(
-                        element,
-                        viewport
-                    );
-            }
-            catch (e) {}
-
-            ensureVisible(
-                element
             );
 
-            return true;
-        }
-
-        /*
-         * Count actual columns
-         * in first rendered row.
-         *
-         * On your TV this should
-         * return 6.
-         */
-
-        function cardColumns() {
-            var cards =
-                getCards();
-
-            if (
-                !cards.length
-            ) {
-                return 0;
-            }
-
-            if (
-                cards.length === 1
-            ) {
-                return 1;
-            }
-
-            var firstTop =
-                cards[0]
-                    .offsetTop;
-
-            var count =
-                1;
-
-            var i;
-
-            for (
-                i = 1;
-                i < cards.length;
-                i++
-            ) {
-                if (
-                    Math.abs(
-                        cards[i]
-                            .offsetTop -
-                        firstTop
-                    ) <= 8
-                ) {
-                    count++;
-                }
-
-                else {
-                    break;
-                }
-            }
-
-            return Math.max(
-                1,
-                count
+            root.append(
+                '<div class="av40-status">' +
+                    'Загрузка AnimeVost...' +
+                '</div>'
             );
         }
 
-        /*
-         * When pressing Up from
-         * the first anime row,
-         * find the menu button
-         * above that card.
-         */
-
-        function closestNavToCard(
-            card
-        ) {
-            var nav =
-                getNavButtons();
-
-            if (
-                !nav.length ||
-                !card
-            ) {
-                return null;
-            }
-
-            var cr =
-                card
-                    .getBoundingClientRect();
-
-            var cx =
-                cr.left +
-                cr.width / 2;
-
-            var best =
-                nav[0];
-
-            var bestDistance =
-                Infinity;
-
-            var i;
-
-            for (
-                i = 0;
-                i < nav.length;
-                i++
-            ) {
-                var nr =
-                    nav[i]
-                        .getBoundingClientRect();
-
-                var nx =
-                    nr.left +
-                    nr.width / 2;
-
-                var distance =
-                    Math.abs(
-                        nx -
-                        cx
-                    );
-
-                if (
-                    distance <
-                    bestDistance
-                ) {
-                    bestDistance =
-                        distance;
-
-                    best =
-                        nav[i];
-                }
-            }
-
-            return best;
-        }
-
-        /*
-         * Explicit row / column
-         * navigation.
-         */
-
-        function move(
-            direction
-        ) {
-            var current =
-                getCurrent();
-
-            if (
-                !current
-            ) {
-                return false;
-            }
-
-            var isNav =
+        function addTopNavigation() {
+            var bar =
                 $(
-                    current
-                ).hasClass(
-                    'animevost-v032__navbtn'
+                    '<div class="av40-nav"></div>'
                 );
 
-            var isCard =
-                $(
-                    current
-                ).hasClass(
-                    'animevost-v032__card'
-                );
-
-            var nav =
-                getNavButtons();
-
-            var cards =
-                getCards();
-
-            var target =
-                null;
-
-            var index;
-            var columns;
-
-            /*
-             * Top menu navigation
-             */
-
-            if (
-                isNav
-            ) {
-                index =
-                    nav.indexOf(
-                        current
-                    );
-
-                if (
-                    direction ===
-                    'left' &&
-                    index > 0
-                ) {
-                    target =
-                        nav[
-                            index - 1
-                        ];
-                }
-
-                else if (
-                    direction ===
-                    'right' &&
-                    index >= 0 &&
-                    index <
-                    nav.length - 1
-                ) {
-                    target =
-                        nav[
-                            index + 1
-                        ];
-                }
-
-                /*
-                 * Down from top menu
-                 * finds the closest
-                 * card horizontally.
-                 */
-
-                else if (
-                    direction ===
-                    'down' &&
-                    cards.length
-                ) {
-                    var nr =
-                        current
-                            .getBoundingClientRect();
-
-                    var nx =
-                        nr.left +
-                        nr.width / 2;
-
-                    var bestDistance =
-                        Infinity;
-
-                    var i;
-
-                    for (
-                        i = 0;
-                        i <
-                        Math.min(
-                            cardColumns(),
-                            cards.length
-                        );
-                        i++
-                    ) {
-                        var cr =
-                            cards[i]
-                                .getBoundingClientRect();
-
-                        var cx =
-                            cr.left +
-                            cr.width / 2;
-
-                        var d =
-                            Math.abs(
-                                cx -
-                                nx
-                            );
-
-                        if (
-                            d <
-                            bestDistance
-                        ) {
-                            bestDistance =
-                                d;
-
-                            target =
-                                cards[i];
-                        }
-                    }
-                }
-            }
-
-            /*
-             * Anime card navigation
-             */
-
-            if (
-                isCard
-            ) {
-                index =
-                    cards.indexOf(
-                        current
-                    );
-
-                columns =
-                    cardColumns();
-
-                if (
-                    index < 0 ||
-                    !columns
-                ) {
-                    return false;
-                }
-
-                var row =
-                    Math.floor(
-                        index /
-                        columns
-                    );
-
-                var col =
-                    index %
-                    columns;
-
-                /*
-                 * SAME ROW LEFT
-                 */
-
-                if (
-                    direction ===
-                    'left' &&
-                    col > 0
-                ) {
-                    target =
-                        cards[
-                            index - 1
-                        ];
-                }
-
-                /*
-                 * SAME ROW RIGHT
-                 */
-
-                else if (
-                    direction ===
-                    'right' &&
-                    col <
-                    columns - 1 &&
-                    index + 1 <
-                    cards.length
-                ) {
-                    target =
-                        cards[
-                            index + 1
-                        ];
-                }
-
-                /*
-                 * EXACT SAME COLUMN
-                 * ON NEXT ROW
-                 */
-
-                else if (
-                    direction ===
-                    'down'
-                ) {
-                    var downIndex =
-                        index +
-                        columns;
-
-                    if (
-                        downIndex <
-                        cards.length
-                    ) {
-                        target =
-                            cards[
-                                downIndex
-                            ];
-                    }
-                }
-
-                /*
-                 * EXACT SAME COLUMN
-                 * ON PREVIOUS ROW
-                 */
-
-                else if (
-                    direction ===
-                    'up'
-                ) {
-                    if (
-                        row > 0
-                    ) {
-                        var upIndex =
-                            index -
-                            columns;
-
-                        if (
-                            upIndex >= 0
-                        ) {
-                            target =
-                                cards[
-                                    upIndex
-                                ];
-                        }
-                    }
-
-                    else {
-                        target =
-                            closestNavToCard(
-                                current
-                            );
-                    }
-                }
-            }
-
-            return target
-                ? focusElement(
-                    target
-                )
-                : false;
-        }
-
-        function addNavigation() {
-
-            var nav =
-                $(
-                    '<div class="' +
-                    'animevost-v032__nav' +
-                    '"></div>'
-                );
-
-            function button(
+            function add(
                 label,
-                action
+                handler
             ) {
-                var element =
+                var button =
                     $(
-                        '<div class="' +
-                        'animevost-v032__navbtn selector' +
-                        '"></div>'
-                    ).text(
+                        '<div class="av40-navbtn selector"></div>'
+                    )
+                    .text(
                         label
                     );
 
-                element.on(
+                button.on(
                     'hover:enter',
-                    action
+                    handler
                 );
 
-                element.on(
-                    'hover:focus',
-                    function () {
-                        last =
-                            element[0];
-
-                        ensureVisible(
-                            element[0]
-                        );
-                    }
-                );
-
-                nav.append(
-                    element
+                bar.append(
+                    button
                 );
             }
 
-            button(
+            add(
                 'Главная',
                 function () {
                     openCatalog(
@@ -1768,37 +2437,37 @@
                 }
             );
 
-            button(
+            add(
                 'Жанр',
                 function () {
                     showSelect(
                         'Жанр',
-                        parsedMenu.genres
+                        menu.genres
                     );
                 }
             );
 
-            button(
+            add(
                 'Категории',
                 function () {
                     showSelect(
                         'Категории',
-                        parsedMenu.types
+                        menu.types
                     );
                 }
             );
 
-            button(
+            add(
                 'Год',
                 function () {
                     showSelect(
                         'Год',
-                        parsedMenu.years
+                        menu.years
                     );
                 }
             );
 
-            button(
+            add(
                 'Онгоинги',
                 function () {
                     openCatalog(
@@ -1808,7 +2477,7 @@
                 }
             );
 
-            button(
+            add(
                 'Анонсы',
                 function () {
                     openCatalog(
@@ -1819,32 +2488,222 @@
             );
 
             root.append(
-                nav
+                bar
+            );
+        }
+
+        function addCard(
+            grid,
+            item
+        ) {
+            var card =
+                $(
+                    '<div class="av40-card selector"></div>'
+                );
+
+            card.append(
+                createPosterBox(
+                    'av40-poster',
+                    item.poster
+                )
+            );
+
+            card.append(
+                $(
+                    '<div class="av40-name"></div>'
+                )
+                .text(
+                    item.title
+                )
+            );
+
+            var meta =
+                [];
+
+            if (
+                item.year
+            ) {
+                meta.push(
+                    item.year
+                );
+            }
+
+            if (
+                item.type
+            ) {
+                meta.push(
+                    item.type
+                );
+            }
+
+            if (
+                item.episodes
+            ) {
+                meta.push(
+                    item.episodes
+                        .replace(
+                            /\s*\([^)]*\)\s*$/,
+                            ''
+                        )
+                );
+            }
+
+            card.append(
+                $(
+                    '<div class="av40-meta"></div>'
+                )
+                .text(
+                    meta.join(
+                        ' • '
+                    )
+                )
+            );
+
+            card.on(
+                'hover:enter',
+
+                function () {
+                    openDetail(
+                        item
+                    );
+                }
+            );
+
+            grid.append(
+                card
+            );
+        }
+
+        function addPaging(
+            paging
+        ) {
+            if (
+                !paging ||
+                (
+                    !paging.previous &&
+                    !paging.next
+                )
+            ) {
+                return;
+            }
+
+            var pages =
+                $(
+                    '<div class="av40-pages"></div>'
+                );
+
+            if (
+                paging.previous
+            ) {
+                var prev =
+                    $(
+                        '<div class="av40-pagebtn selector"></div>'
+                    )
+                    .text(
+                        '← Страница ' +
+                        (
+                            paging.current -
+                            1
+                        )
+                    );
+
+                prev.on(
+                    'hover:enter',
+
+                    function () {
+                        openCatalog(
+                            paging.previous,
+                            title
+                        );
+                    }
+                );
+
+                pages.append(
+                    prev
+                );
+            }
+
+            var current =
+                $(
+                    '<div class="av40-pagebtn"></div>'
+                )
+                .text(
+                    'Страница ' +
+                    paging.current +
+                    (
+                        paging.max >
+                        1
+                            ? ' / ' +
+                              paging.max
+                            : ''
+                    )
+                );
+
+            pages.append(
+                current
+            );
+
+            if (
+                paging.next
+            ) {
+                var next =
+                    $(
+                        '<div class="av40-pagebtn selector"></div>'
+                    )
+                    .text(
+                        'Страница ' +
+                        (
+                            paging.current +
+                            1
+                        ) +
+                        ' →'
+                    );
+
+                next.on(
+                    'hover:enter',
+
+                    function () {
+                        openCatalog(
+                            paging.next,
+                            title
+                        );
+                    }
+                );
+
+                pages.append(
+                    next
+                );
+            }
+
+            root.append(
+                pages
             );
         }
 
         function renderError(
-            text
+            message
         ) {
+            if (!alive) {
+                return;
+            }
+
             root.empty();
 
             root.append(
                 $(
-                    '<div class="' +
-                    'animevost-v032__title' +
-                    '"></div>'
-                ).text(
+                    '<div class="av40-title"></div>'
+                )
+                .text(
                     title
                 )
             );
 
             root.append(
                 $(
-                    '<div class="' +
-                    'animevost-v032__status' +
-                    '"></div>'
-                ).text(
-                    text
+                    '<div class="av40-status"></div>'
+                )
+                .text(
+                    message
                 )
             );
 
@@ -1852,261 +2711,94 @@
                 .loader(
                     false
                 );
-
-            self.start();
         }
 
         function renderCatalog(
             data
         ) {
+            if (!alive) {
+                return;
+            }
+
             root.empty();
-
-            last =
-                null;
-
-            /*
-             * Reset catalogue back
-             * to top whenever a new
-             * section is opened.
-             */
 
             viewport[0]
                 .scrollTop =
                 0;
 
+            menu =
+                data.menu ||
+                menu;
+
             root.append(
                 $(
-                    '<div class="' +
-                    'animevost-v032__title' +
-                    '"></div>'
-                ).text(
+                    '<div class="av40-title"></div>'
+                )
+                .text(
                     title
                 )
             );
 
-            addNavigation();
+            addTopNavigation();
 
             if (
+                !data.items ||
                 !data.items.length
             ) {
                 root.append(
-                    '<div class="' +
-                    'animevost-v032__status' +
-                    '">' +
-                    'Карточки аниме на этой странице не найдены.' +
+                    '<div class="av40-status">' +
+                        'Карточки аниме на этой странице не найдены.' +
                     '</div>'
                 );
-
-                self.activity
-                    .loader(
-                        false
-                    );
-
-                self.start();
-
-                return;
             }
 
-            var grid =
-                $(
-                    '<div class="' +
-                    'animevost-v032__grid' +
-                    '"></div>'
+            else {
+                var grid =
+                    $(
+                        '<div class="av40-grid"></div>'
+                    );
+
+                data.items.forEach(
+                    function (item) {
+                        addCard(
+                            grid,
+                            item
+                        );
+                    }
                 );
 
-            data.items.forEach(
-                function (item) {
+                root.append(
+                    grid
+                );
+            }
 
-                    var card =
-                        $(
-                            '<div class="' +
-                            'animevost-v032__card selector' +
-                            '"></div>'
-                        );
-
-                    var poster =
-                        $(
-                            '<div class="' +
-                            'animevost-v032__poster' +
-                            '"></div>'
-                        );
-
-                    if (
-                        item.poster
-                    ) {
-                        var image =
-                            $('<img alt="">')
-                                .attr(
-                                    'src',
-                                    item.poster
-                                );
-
-                        image.on(
-                            'error',
-                            function () {
-                                poster
-                                    .empty()
-                                    .append(
-                                        '<div class="' +
-                                        'animevost-v032__fallback' +
-                                        '">' +
-                                        'AnimeVost' +
-                                        '</div>'
-                                    );
-                            }
-                        );
-
-                        poster.append(
-                            image
-                        );
-                    }
-
-                    else {
-                        poster.append(
-                            '<div class="' +
-                            'animevost-v032__fallback' +
-                            '">' +
-                            'AnimeVost' +
-                            '</div>'
-                        );
-                    }
-
-                    var meta = [];
-
-                    if (
-                        item.year
-                    ) {
-                        meta.push(
-                            item.year
-                        );
-                    }
-
-                    if (
-                        item.type
-                    ) {
-                        meta.push(
-                            item.type
-                        );
-                    }
-
-                    if (
-                        item.episodes
-                    ) {
-                        meta.push(
-                            item.episodes
-                                .replace(
-                                    /\s*\([^)]*\)\s*$/,
-                                    ''
-                                )
-                        );
-                    }
-
-                    card.append(
-                        poster
-                    );
-
-                    card.append(
-                        $(
-                            '<div class="' +
-                            'animevost-v032__name' +
-                            '"></div>'
-                        ).text(
-                            item.title
-                        )
-                    );
-
-                    card.append(
-                        $(
-                            '<div class="' +
-                            'animevost-v032__meta' +
-                            '"></div>'
-                        ).text(
-                            meta.join(
-                                ' • '
-                            )
-                        )
-                    );
-
-                    /*
-                     * Whenever a card
-                     * receives focus,
-                     * make absolutely
-                     * sure it is visible.
-                     */
-
-                    card.on(
-                        'hover:focus',
-                        function () {
-                            last =
-                                card[0];
-
-                            ensureVisible(
-                                card[0]
-                            );
-                        }
-                    );
-
-                    card.on(
-                        'hover:enter',
-                        function () {
-                            Lampa.Activity.push({
-                                url:
-                                    '',
-
-                                title:
-                                    item.title,
-
-                                component:
-                                    DETAIL,
-
-                                av_item:
-                                    item,
-
-                                page:
-                                    1
-                            });
-                        }
-                    );
-
-                    grid.append(
-                        card
-                    );
-                }
+            addPaging(
+                data.paging
             );
 
-            root.append(
-                grid
-            );
+            nav.bind();
 
             self.activity
                 .loader(
                     false
                 );
 
-            self.start();
-
             setTimeout(
                 function () {
-
-                    var nav =
-                        getNavButtons();
-
-                    var cards =
-                        getCards();
-
-                    if (
-                        nav.length
-                    ) {
-                        focusElement(
-                            nav[0]
-                        );
+                    if (!alive) {
+                        return;
                     }
 
-                    else if (
-                        cards.length
+                    var selectors =
+                        visibleSelectors(
+                            root
+                        );
+
+                    if (
+                        selectors.length
                     ) {
-                        focusElement(
-                            cards[0]
+                        nav.focus(
+                            selectors[0]
                         );
                     }
                 },
@@ -2116,67 +2808,69 @@
 
         this.create =
             function () {
-
-                self.activity
-                    .loader(
-                        true
-                    );
+                alive =
+                    true;
 
                 viewport.append(
                     root
                 );
 
-                root.append(
-                    $(
-                        '<div class="' +
-                        'animevost-v032__title' +
-                        '"></div>'
-                    ).text(
-                        title
-                    )
-                );
+                renderLoading();
 
-                root.append(
-                    '<div class="' +
-                    'animevost-v032__status' +
-                    '">' +
-                    'Загрузка AnimeVost...' +
-                    '</div>'
-                );
+                this.activity
+                    .loader(
+                        true
+                    );
+
+                nav =
+                    createNavigation(
+                        root,
+                        viewport,
+
+                        function () {
+                            Lampa.Controller
+                                .toggle(
+                                    'menu'
+                                );
+                        },
+
+                        function () {
+                            Lampa.Controller
+                                .toggle(
+                                    'head'
+                                );
+                        }
+                    );
 
                 network.timeout(
                     20000
                 );
 
                 network.silent(
-
                     workerUrl(
                         path
                     ),
 
                     function (html) {
+                        if (!alive) {
+                            return;
+                        }
 
                         try {
-                            var parsed =
-                                parseItems(
+                            renderCatalog(
+                                parseCatalog(
                                     String(
                                         html ||
                                         ''
-                                    )
-                                );
-
-                            parsedMenu =
-                                parsed.menu;
-
-                            renderCatalog(
-                                parsed
+                                    ),
+                                    path
+                                )
                             );
                         }
 
                         catch (error) {
-
                             console.log(
-                                'AnimeVost parse error',
+                                'AnimeVost catalog parse error',
                                 error
                             );
 
@@ -2193,6 +2887,9 @@
                     },
 
                     function (error) {
+                        if (!alive) {
+                            return;
+                        }
 
                         var code =
                             '?';
@@ -2222,7 +2919,6 @@
 
         this.start =
             function () {
-
                 if (
                     Lampa.Activity
                         .active()
@@ -2238,7 +2934,6 @@
                     {
                         toggle:
                             function () {
-
                                 Lampa.Controller
                                     .collectionSet(
                                         viewport
@@ -2246,66 +2941,45 @@
 
                                 Lampa.Controller
                                     .collectionFocus(
-                                        last ||
+                                        nav.getLast() ||
                                         false,
                                         viewport
                                     );
 
                                 if (
-                                    last
+                                    nav.getLast()
                                 ) {
                                     ensureVisible(
-                                        last
+                                        viewport,
+                                        nav.getLast()
                                     );
                                 }
                             },
 
                         left:
                             function () {
-
-                                if (
-                                    !move(
-                                        'left'
-                                    )
-                                ) {
-                                    Lampa.Controller
-                                        .toggle(
-                                            'menu'
-                                        );
-                                }
+                                nav.move(
+                                    'left'
+                                );
                             },
 
                         right:
                             function () {
-                                move(
+                                nav.move(
                                     'right'
                                 );
                             },
 
                         up:
                             function () {
-
-                                if (
-                                    !move(
-                                        'up'
-                                    )
-                                ) {
-                                    Lampa.Controller
-                                        .toggle(
-                                            'head'
-                                        );
-                                }
+                                nav.move(
+                                    'up'
+                                );
                             },
-
-                        /*
-                         * Down now moves
-                         * by exact row and
-                         * forces scrolling.
-                         */
 
                         down:
                             function () {
-                                move(
+                                nav.move(
                                     'down'
                                 );
                             },
@@ -2337,6 +3011,724 @@
 
         this.destroy =
             function () {
+                alive =
+                    false;
+
+                network.clear();
+
+                viewport.remove();
+
+                root.remove();
+            };
+    }
+
+    function DetailComponent(
+        object
+    ) {
+        var network =
+            new Lampa.Reguest();
+
+        var alive =
+            false;
+
+        var viewport =
+            $(
+                '<div class="av40-viewport"></div>'
+            );
+
+        var root =
+            $(
+                '<div class="av40-page"></div>'
+            );
+
+        var item =
+            object.av_item ||
+            {};
+
+        var self =
+            this;
+
+        var nav;
+
+        var selectedEpisode =
+            0;
+
+        var detail =
+            null;
+
+        function renderLoading() {
+            root.empty();
+
+            viewport[0]
+                .scrollTop =
+                0;
+
+            root.append(
+                $(
+                    '<div class="av40-title"></div>'
+                )
+                .text(
+                    item.title ||
+                    'AnimeVost'
+                )
+            );
+
+            root.append(
+                '<div class="av40-status">' +
+                    'Загрузка страницы аниме...' +
+                '</div>'
+            );
+        }
+
+        function watchTarget() {
+            if (!detail) {
+                return absoluteUrl(
+                    item.href ||
+                    '/'
+                );
+            }
+
+            if (
+                selectedEpisode >
+                0
+            ) {
+                var i;
+
+                for (
+                    i = 0;
+                    i <
+                    detail.episodes.length;
+                    i++
+                ) {
+                    if (
+                        detail
+                            .episodes[i]
+                            .number ===
+                            selectedEpisode &&
+                        detail
+                            .episodes[i]
+                            .href
+                    ) {
+                        return detail
+                            .episodes[i]
+                            .href;
+                    }
+                }
+            }
+
+            return absoluteUrl(
+                detail.href ||
+                item.href ||
+                '/'
+            );
+        }
+
+        function updateEpisodeSelection() {
+            root
+                .find(
+                    '.av40-episode'
+                )
+                .each(
+                    function () {
+                        var el =
+                            $(
+                                this
+                            );
+
+                        var number =
+                            safeInt(
+                                el.attr(
+                                    'data-episode'
+                                ),
+                                0
+                            );
+
+                        el.toggleClass(
+                            'selected',
+                            number ===
+                            selectedEpisode
+                        );
+                    }
+                );
+        }
+
+        function renderDetail(
+            data
+        ) {
+            if (!alive) {
+                return;
+            }
+
+            detail =
+                data;
+
+            root.empty();
+
+            viewport[0]
+                .scrollTop =
+                0;
+
+            var top =
+                $(
+                    '<div class="av40-detail-top"></div>'
+                );
+
+            top.append(
+                createPosterBox(
+                    'av40-detail-poster',
+                    data.poster
+                )
+            );
+
+            var body =
+                $(
+                    '<div class="av40-detail-body"></div>'
+                );
+
+            body.append(
+                $(
+                    '<div class="av40-title"></div>'
+                )
+                .text(
+                    data.title ||
+                    item.title ||
+                    'AnimeVost'
+                )
+            );
+
+            if (
+                data.originalTitle
+            ) {
+                body.append(
+                    $(
+                        '<div class="av40-detail-original"></div>'
+                    )
+                    .text(
+                        data.originalTitle
+                    )
+                );
+            }
+
+            var meta =
+                [];
+
+            if (
+                data.year
+            ) {
+                meta.push(
+                    'Год: ' +
+                    data.year
+                );
+            }
+
+            if (
+                data.type
+            ) {
+                meta.push(
+                    'Тип: ' +
+                    data.type
+                );
+            }
+
+            if (
+                data.episodesText
+            ) {
+                meta.push(
+                    'Серии: ' +
+                    data.episodesText
+                );
+            }
+
+            if (
+                data.duration
+            ) {
+                meta.push(
+                    'Длительность: ' +
+                    data.duration
+                );
+            }
+
+            if (
+                data.rating
+            ) {
+                meta.push(
+                    'Рейтинг: ' +
+                    data.rating
+                );
+            }
+
+            if (
+                data.genre
+            ) {
+                meta.push(
+                    'Жанр: ' +
+                    data.genre
+                );
+            }
+
+            if (
+                data.director
+            ) {
+                meta.push(
+                    'Режиссёр: ' +
+                    data.director
+                );
+            }
+
+            body.append(
+                $(
+                    '<div class="av40-detail-meta"></div>'
+                )
+                .text(
+                    meta.join(
+                        ' • '
+                    )
+                )
+            );
+
+            body.append(
+                $(
+                    '<div class="av40-detail-description"></div>'
+                )
+                .text(
+                    data.description ||
+                    'Описание не найдено.'
+                )
+            );
+
+            var actions =
+                $(
+                    '<div class="av40-actions"></div>'
+                );
+
+            var watch =
+                $(
+                    '<div class="av40-action selector">' +
+                        'Смотреть на AnimeVost' +
+                    '</div>'
+                );
+
+            watch.on(
+                'hover:enter',
+
+                function () {
+                    openSitePage(
+                        watchTarget()
+                    );
+                }
+            );
+
+            actions.append(
+                watch
+            );
+
+            body.append(
+                actions
+            );
+
+            top.append(
+                body
+            );
+
+            root.append(
+                top
+            );
+
+            root.append(
+                '<div class="av40-section-title">' +
+                    'Серии' +
+                '</div>'
+            );
+
+            if (
+                data.episodes &&
+                data.episodes.length
+            ) {
+                var episodeGrid =
+                    $(
+                        '<div class="av40-episodes"></div>'
+                    );
+
+                data.episodes.forEach(
+                    function (episode) {
+                        var button =
+                            $(
+                                '<div class="av40-episode selector"></div>'
+                            )
+                            .attr(
+                                'data-episode',
+                                episode.number
+                            )
+                            .text(
+                                episode.title ||
+                                (
+                                    episode.number +
+                                    ' серия'
+                                )
+                            );
+
+                        button.on(
+                            'hover:enter',
+
+                            function () {
+                                selectedEpisode =
+                                    episode.number;
+
+                                updateEpisodeSelection();
+
+                                notify(
+                                    'Выбрана серия ' +
+                                    episode.number +
+                                    '. Нажмите «Смотреть на AnimeVost».'
+                                );
+                            }
+                        );
+
+                        episodeGrid.append(
+                            button
+                        );
+                    }
+                );
+
+                root.append(
+                    episodeGrid
+                );
+
+                root.append(
+                    '<div class="av40-note">' +
+                        'Список серий берётся из текущей страницы AnimeVost. ' +
+                        'Если у серии есть отдельная ссылка, кнопка «Смотреть на AnimeVost» откроет её; ' +
+                        'иначе откроется обычная страница тайтла с веб-плеером сайта.' +
+                    '</div>'
+                );
+            }
+
+            else {
+                root.append(
+                    '<div class="av40-status">' +
+                        'Список серий на странице не найден.' +
+                    '</div>'
+                );
+            }
+
+            nav.bind();
+
+            self.activity
+                .loader(
+                    false
+                );
+
+            setTimeout(
+                function () {
+                    if (!alive) {
+                        return;
+                    }
+
+                    var selectors =
+                        visibleSelectors(
+                            root
+                        );
+
+                    if (
+                        selectors.length
+                    ) {
+                        nav.focus(
+                            selectors[0]
+                        );
+                    }
+                },
+                80
+            );
+        }
+
+        function renderError(
+            message
+        ) {
+            if (!alive) {
+                return;
+            }
+
+            root.empty();
+
+            root.append(
+                $(
+                    '<div class="av40-title"></div>'
+                )
+                .text(
+                    item.title ||
+                    'AnimeVost'
+                )
+            );
+
+            root.append(
+                $(
+                    '<div class="av40-status"></div>'
+                )
+                .text(
+                    message
+                )
+            );
+
+            var open =
+                $(
+                    '<div class="av40-action selector">' +
+                        'Открыть страницу AnimeVost' +
+                    '</div>'
+                );
+
+            open.on(
+                'hover:enter',
+
+                function () {
+                    openSitePage(
+                        item.href ||
+                        '/'
+                    );
+                }
+            );
+
+            root.append(
+                open
+            );
+
+            nav.bind();
+
+            self.activity
+                .loader(
+                    false
+                );
+        }
+
+        this.create =
+            function () {
+                alive =
+                    true;
+
+                viewport.append(
+                    root
+                );
+
+                renderLoading();
+
+                this.activity
+                    .loader(
+                        true
+                    );
+
+                nav =
+                    createNavigation(
+                        root,
+                        viewport,
+
+                        function () {
+                            Lampa.Controller
+                                .toggle(
+                                    'menu'
+                                );
+                        },
+
+                        function () {
+                            Lampa.Controller
+                                .toggle(
+                                    'head'
+                                );
+                        }
+                    );
+
+                var key =
+                    toPath(
+                        item.href ||
+                        '/'
+                    );
+
+                if (
+                    DETAIL_CACHE[key]
+                ) {
+                    renderDetail(
+                        DETAIL_CACHE[key]
+                    );
+
+                    return this.render();
+                }
+
+                network.timeout(
+                    20000
+                );
+
+                network.silent(
+                    workerUrl(
+                        key
+                    ),
+
+                    function (html) {
+                        if (!alive) {
+                            return;
+                        }
+
+                        try {
+                            var parsed =
+                                parseDetail(
+                                    String(
+                                        html ||
+                                        ''
+                                    ),
+                                    item
+                                );
+
+                            DETAIL_CACHE[key] =
+                                parsed;
+
+                            renderDetail(
+                                parsed
+                            );
+                        }
+
+                        catch (error) {
+                            console.log(
+                                'AnimeVost detail parse error',
+                                error
+                            );
+
+                            renderError(
+                                'Ошибка разбора страницы аниме: ' +
+                                (
+                                    error &&
+                                    error.message
+                                        ? error.message
+                                        : error
+                                )
+                            );
+                        }
+                    },
+
+                    function (error) {
+                        if (!alive) {
+                            return;
+                        }
+
+                        var code =
+                            '?';
+
+                        try {
+                            code =
+                                error.status;
+                        }
+                        catch (e) {}
+
+                        renderError(
+                            'Не удалось загрузить страницу аниме. Код: ' +
+                            code
+                        );
+                    },
+
+                    false,
+
+                    {
+                        dataType:
+                            'text'
+                    }
+                );
+
+                return this.render();
+            };
+
+        this.start =
+            function () {
+                if (
+                    Lampa.Activity
+                        .active()
+                        .activity !==
+                    this.activity
+                ) {
+                    return;
+                }
+
+                Lampa.Controller.add(
+                    'content',
+
+                    {
+                        toggle:
+                            function () {
+                                Lampa.Controller
+                                    .collectionSet(
+                                        viewport
+                                    );
+
+                                Lampa.Controller
+                                    .collectionFocus(
+                                        nav.getLast() ||
+                                        false,
+                                        viewport
+                                    );
+
+                                if (
+                                    nav.getLast()
+                                ) {
+                                    ensureVisible(
+                                        viewport,
+                                        nav.getLast()
+                                    );
+                                }
+                            },
+
+                        left:
+                            function () {
+                                nav.move(
+                                    'left'
+                                );
+                            },
+
+                        right:
+                            function () {
+                                nav.move(
+                                    'right'
+                                );
+                            },
+
+                        up:
+                            function () {
+                                nav.move(
+                                    'up'
+                                );
+                            },
+
+                        down:
+                            function () {
+                                nav.move(
+                                    'down'
+                                );
+                            },
+
+                        back:
+                            function () {
+                                Lampa.Activity
+                                    .backward();
+                            }
+                    }
+                );
+
+                Lampa.Controller
+                    .toggle(
+                        'content'
+                    );
+            };
+
+        this.pause =
+            function () {};
+
+        this.stop =
+            function () {};
+
+        this.render =
+            function () {
+                return viewport;
+            };
+
+        this.destroy =
+            function () {
+                alive =
+                    false;
+
                 network.clear();
 
                 viewport.remove();
@@ -2346,15 +3738,22 @@
     }
 
     function addMenuButton() {
+        if (
+            $(
+                '.menu .menu__list [data-action="' +
+                NS +
+                '"]'
+            ).length
+        ) {
+            return;
+        }
 
         var button =
             $(
-                '<li class="' +
-                'menu__item selector' +
-                '" ' +
-                'data-action="' +
-                'animevost_v032' +
-                '">' +
+                '<li class="menu__item selector" ' +
+                    'data-action="' +
+                    NS +
+                    '">' +
 
                     '<div class="menu__ico">' +
 
@@ -2401,7 +3800,6 @@
     }
 
     function init() {
-
         if (
             window[FLAG]
         ) {
@@ -2414,32 +3812,47 @@
         try {
             injectStyle();
 
-            Lampa.Component.add(
-                CATALOG,
-                CatalogComponent
-            );
+            if (
+                !Lampa.Component
+                    .get(
+                        COMPONENT_CATALOG
+                    )
+            ) {
+                Lampa.Component
+                    .add(
+                        COMPONENT_CATALOG,
+                        CatalogComponent
+                    );
+            }
 
-            Lampa.Component.add(
-                DETAIL,
-                DetailComponent
-            );
+            if (
+                !Lampa.Component
+                    .get(
+                        COMPONENT_DETAIL
+                    )
+            ) {
+                Lampa.Component
+                    .add(
+                        COMPONENT_DETAIL,
+                        DetailComponent
+                    );
+            }
 
             addMenuButton();
 
             notify(
-                'AnimeVost V0.3.2 загружен'
+                'AnimeVost V0.4 загружен'
             );
         }
 
         catch (error) {
-
             console.log(
-                'AnimeVost V0.3.2 init error',
+                'AnimeVost V0.4 init error',
                 error
             );
 
             notify(
-                'Ошибка запуска AnimeVost V0.3.2'
+                'Ошибка запуска AnimeVost V0.4'
             );
         }
     }
@@ -2455,7 +3868,6 @@
             'app',
 
             function (event) {
-
                 if (
                     event &&
                     event.type ===
