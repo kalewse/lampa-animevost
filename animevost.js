@@ -1,9 +1,9 @@
 (function () {
     'use strict';
 
-    var FLAG = 'animevost_plugin_v031_ready';
-    var CATALOG = 'animevost_catalog_v031';
-    var DETAIL = 'animevost_detail_v031';
+    var FLAG = 'animevost_plugin_v032_ready';
+    var CATALOG = 'animevost_catalog_v032';
+    var DETAIL = 'animevost_detail_v032';
 
     var WORKER =
         'https://animevost-lampa.kalewse69.workers.dev/';
@@ -14,7 +14,8 @@
     function notify(text) {
         try {
             Lampa.Noty.show(text);
-        } catch (e) {}
+        }
+        catch (e) {}
     }
 
     function clean(text) {
@@ -26,7 +27,9 @@
     function absoluteUrl(value) {
         value = clean(value);
 
-        if (!value) return '';
+        if (!value) {
+            return '';
+        }
 
         if (/^https?:\/\//i.test(value)) {
             return value;
@@ -46,11 +49,14 @@
     function toPath(value) {
         value = clean(value);
 
-        if (!value) return '/';
+        if (!value) {
+            return '/';
+        }
 
         try {
             if (/^https?:\/\//i.test(value)) {
-                var a = document.createElement('a');
+                var a =
+                    document.createElement('a');
 
                 a.href = value;
 
@@ -72,28 +78,40 @@
         return WORKER +
             '?path=' +
             encodeURIComponent(
-                toPath(path || '/')
+                toPath(
+                    path || '/'
+                )
             );
     }
 
-    function firstMatch(text, expression) {
+    function firstMatch(
+        text,
+        expression
+    ) {
         var match =
-            String(text || '')
-                .match(expression);
+            String(
+                text || ''
+            ).match(
+                expression
+            );
 
         return (
             match &&
             match[1]
         )
-            ? clean(match[1])
+            ? clean(
+                match[1]
+            )
             : '';
     }
 
     function findContainer(h2) {
-        var node = h2;
+        var node =
+            h2;
 
         var best =
-            h2.parentElement || h2;
+            h2.parentElement ||
+            h2;
 
         var i;
 
@@ -104,16 +122,20 @@
         ) {
             var text =
                 clean(
-                    node.textContent || ''
+                    node.textContent ||
+                    ''
                 );
 
-            var titles = 0;
+            var titles =
+                0;
 
             try {
                 titles =
-                    node.querySelectorAll(
-                        'h2 a[href*="/tip/"]'
-                    ).length;
+                    node
+                        .querySelectorAll(
+                            'h2 a[href*="/tip/"]'
+                        )
+                        .length;
             }
             catch (e) {}
 
@@ -129,8 +151,11 @@
                 return node;
             }
 
-            if (titles <= 1) {
-                best = node;
+            if (
+                titles <= 1
+            ) {
+                best =
+                    node;
             }
 
             node =
@@ -145,20 +170,17 @@
         href
     ) {
         var wanted =
-            toPath(href);
-
-        var links =
-            container.querySelectorAll(
-                'a[href]'
+            toPath(
+                href
             );
 
-        var i;
+        var links =
+            container
+                .querySelectorAll(
+                    'a[href]'
+                );
 
-        /*
-         * First attempt:
-         * poster contained in
-         * the anime page link.
-         */
+        var i;
 
         for (
             i = 0;
@@ -181,12 +203,14 @@
 
                 if (linked) {
                     var source =
-                        linked.getAttribute(
-                            'data-src'
-                        ) ||
-                        linked.getAttribute(
-                            'src'
-                        ) ||
+                        linked
+                            .getAttribute(
+                                'data-src'
+                            ) ||
+                        linked
+                            .getAttribute(
+                                'src'
+                            ) ||
                         '';
 
                     if (source) {
@@ -198,16 +222,11 @@
             }
         }
 
-        /*
-         * Fallback:
-         * find a suitable image
-         * inside the anime block.
-         */
-
         var images =
-            container.querySelectorAll(
-                'img'
-            );
+            container
+                .querySelectorAll(
+                    'img'
+                );
 
         for (
             i = 0;
@@ -215,12 +234,14 @@
             i++
         ) {
             var src =
-                images[i].getAttribute(
-                    'data-src'
-                ) ||
-                images[i].getAttribute(
-                    'src'
-                ) ||
+                images[i]
+                    .getAttribute(
+                        'data-src'
+                    ) ||
+                images[i]
+                    .getAttribute(
+                        'src'
+                    ) ||
                 '';
 
             var alt =
@@ -228,13 +249,16 @@
                     images[i]
                         .getAttribute(
                             'alt'
-                        ) || ''
+                        ) ||
+                    ''
                 );
 
             var lower =
                 src.toLowerCase();
 
-            if (!src) continue;
+            if (!src) {
+                continue;
+            }
 
             if (
                 lower.indexOf(
@@ -294,10 +318,14 @@
             path
         ) {
             title =
-                clean(title);
+                clean(
+                    title
+                );
 
             path =
-                toPath(path);
+                toPath(
+                    path
+                );
 
             if (
                 !title ||
@@ -311,16 +339,20 @@
                 '|' +
                 path;
 
-            if (seen[key]) {
+            if (
+                seen[key]
+            ) {
                 return;
             }
 
-            seen[key] = true;
+            seen[key] =
+                true;
 
-            result[group].push({
-                title: title,
-                path: path
-            });
+            result[group]
+                .push({
+                    title: title,
+                    path: path
+                });
         }
 
         var i;
@@ -334,10 +366,13 @@
                 anchors[i]
                     .getAttribute(
                         'href'
-                    ) || '';
+                    ) ||
+                '';
 
             var path =
-                toPath(href);
+                toPath(
+                    href
+                );
 
             var title =
                 clean(
@@ -408,20 +443,24 @@
             new DOMParser();
 
         var doc =
-            parser.parseFromString(
-                String(
-                    html || ''
-                ),
-                'text/html'
-            );
+            parser
+                .parseFromString(
+                    String(
+                        html || ''
+                    ),
+                    'text/html'
+                );
 
         var menu =
-            parseMenu(doc);
+            parseMenu(
+                doc
+            );
 
         var headings =
-            doc.querySelectorAll(
-                'h2 a[href*="/tip/"]'
-            );
+            doc
+                .querySelectorAll(
+                    'h2 a[href*="/tip/"]'
+                );
 
         var items = [];
         var seen = {};
@@ -438,14 +477,17 @@
 
             var href =
                 toPath(
-                    anchor.getAttribute(
-                        'href'
-                    ) || ''
+                    anchor
+                        .getAttribute(
+                            'href'
+                        ) ||
+                    ''
                 );
 
             var title =
                 clean(
-                    anchor.textContent ||
+                    anchor
+                        .textContent ||
                     ''
                 );
 
@@ -464,14 +506,13 @@
                 continue;
             }
 
-            seen[href] = true;
-
-            var h2 =
-                anchor.parentElement;
+            seen[href] =
+                true;
 
             var container =
                 findContainer(
-                    h2 || anchor
+                    anchor.parentElement ||
+                    anchor
                 );
 
             var text =
@@ -481,39 +522,11 @@
                     ''
                 );
 
-            var year =
-                firstMatch(
-                    text,
-                    /Год выхода:\s*([^Ж]+?)(?=\s+Жанр:|$)/i
-                );
-
-            var genre =
-                firstMatch(
-                    text,
-                    /Жанр:\s*(.+?)(?=\s+Тип:|$)/i
-                );
-
-            var type =
-                firstMatch(
-                    text,
-                    /Тип:\s*(.+?)(?=\s+Количество серий:|\s+Режисс[её]р:|\s+Рейтинг:|$)/i
-                );
-
-            var episodes =
-                firstMatch(
-                    text,
-                    /Количество серий:\s*(.+?)(?=\s+Режисс[её]р:|\s+Рейтинг:|\s+Описание:|$)/i
-                );
-
-            var description =
-                firstMatch(
-                    text,
-                    /Описание:\s*(.+?)(?=\s+Смотреть\s|\s+Категории:|$)/i
-                );
-
             items.push({
                 title: title,
-                href: href,
+
+                href:
+                    href,
 
                 poster:
                     findPoster(
@@ -521,12 +534,35 @@
                         href
                     ),
 
-                year: year,
-                genre: genre,
-                type: type,
-                episodes: episodes,
+                year:
+                    firstMatch(
+                        text,
+                        /Год выхода:\s*([^Ж]+?)(?=\s+Жанр:|$)/i
+                    ),
+
+                genre:
+                    firstMatch(
+                        text,
+                        /Жанр:\s*(.+?)(?=\s+Тип:|$)/i
+                    ),
+
+                type:
+                    firstMatch(
+                        text,
+                        /Тип:\s*(.+?)(?=\s+Количество серий:|\s+Режисс[её]р:|\s+Рейтинг:|$)/i
+                    ),
+
+                episodes:
+                    firstMatch(
+                        text,
+                        /Количество серий:\s*(.+?)(?=\s+Режисс[её]р:|\s+Рейтинг:|\s+Описание:|$)/i
+                    ),
+
                 description:
-                    description
+                    firstMatch(
+                        text,
+                        /Описание:\s*(.+?)(?=\s+Смотреть\s|\s+Категории:|$)/i
+                    )
             });
         }
 
@@ -539,30 +575,45 @@
     function injectStyle() {
         if (
             $(
-                '#animevost-v031-style'
+                '#animevost-v032-style'
             ).length
         ) {
             return;
         }
 
         var css =
-            '.animevost-v031{' +
-                'padding:1.3em 2.2em 3em;' +
+
+            '.animevost-v032-viewport{' +
+                'height:calc(100vh - 6.2em);' +
+                'overflow-y:auto;' +
+                'overflow-x:hidden;' +
+                'box-sizing:border-box;' +
+                '-webkit-overflow-scrolling:touch;' +
             '}' +
 
-            '.animevost-v031__title{' +
+            '.animevost-v032-viewport::-webkit-scrollbar{' +
+                'width:0;' +
+                'height:0;' +
+            '}' +
+
+            '.animevost-v032{' +
+                'padding:1.3em 2.2em 5em;' +
+                'box-sizing:border-box;' +
+            '}' +
+
+            '.animevost-v032__title{' +
                 'font-size:2em;' +
                 'font-weight:600;' +
                 'margin:.2em 0 .75em;' +
             '}' +
 
-            '.animevost-v031__nav{' +
+            '.animevost-v032__nav{' +
                 'display:flex;' +
                 'flex-wrap:wrap;' +
                 'margin-bottom:1.2em;' +
             '}' +
 
-            '.animevost-v031__navbtn{' +
+            '.animevost-v032__navbtn{' +
                 'padding:.7em 1.05em;' +
                 'margin:0 .55em .55em 0;' +
                 'background:rgba(255,255,255,.10);' +
@@ -570,37 +621,38 @@
                 'font-size:1.05em;' +
             '}' +
 
-            '.animevost-v031__navbtn.focus{' +
+            '.animevost-v032__navbtn.focus{' +
                 'background:#fff;' +
                 'color:#111;' +
             '}' +
 
-            '.animevost-v031__status{' +
+            '.animevost-v032__status{' +
                 'padding:1.2em 0;' +
                 'font-size:1.15em;' +
                 'opacity:.8;' +
             '}' +
 
-            '.animevost-v031__grid{' +
+            '.animevost-v032__grid{' +
                 'display:flex;' +
                 'flex-wrap:wrap;' +
                 'align-items:flex-start;' +
             '}' +
 
-            '.animevost-v031__card{' +
+            '.animevost-v032__card{' +
                 'width:12.2em;' +
                 'margin:0 1.05em 1.3em 0;' +
                 'border-radius:.55em;' +
                 'padding:.45em;' +
                 'background:rgba(255,255,255,.04);' +
+                'box-sizing:border-box;' +
             '}' +
 
-            '.animevost-v031__card.focus{' +
+            '.animevost-v032__card.focus{' +
                 'background:rgba(255,255,255,.18);' +
                 'transform:scale(1.025);' +
             '}' +
 
-            '.animevost-v031__poster{' +
+            '.animevost-v032__poster{' +
                 'width:100%;' +
                 'height:17.4em;' +
                 'border-radius:.4em;' +
@@ -611,28 +663,28 @@
                 'justify-content:center;' +
             '}' +
 
-            '.animevost-v031__poster img{' +
+            '.animevost-v032__poster img{' +
                 'width:100%;' +
                 'height:100%;' +
                 'object-fit:cover;' +
                 'display:block;' +
             '}' +
 
-            '.animevost-v031__fallback{' +
+            '.animevost-v032__fallback{' +
                 'font-size:1em;' +
                 'opacity:.55;' +
                 'text-align:center;' +
                 'padding:1em;' +
             '}' +
 
-            '.animevost-v031__name{' +
+            '.animevost-v032__name{' +
                 'font-size:1.03em;' +
                 'line-height:1.25;' +
                 'margin-top:.6em;' +
                 'min-height:2.5em;' +
             '}' +
 
-            '.animevost-v031__meta{' +
+            '.animevost-v032__meta{' +
                 'font-size:.83em;' +
                 'line-height:1.3;' +
                 'opacity:.62;' +
@@ -640,16 +692,28 @@
                 'min-height:2.1em;' +
             '}' +
 
-            '.animevost-v031-detail{' +
-                'padding:1.5em 2.6em 3em;' +
+            '.animevost-v032-detail-viewport{' +
+                'height:calc(100vh - 6.2em);' +
+                'overflow-y:auto;' +
+                'overflow-x:hidden;' +
+                'box-sizing:border-box;' +
             '}' +
 
-            '.animevost-v031-detail__wrap{' +
+            '.animevost-v032-detail-viewport::-webkit-scrollbar{' +
+                'width:0;' +
+                'height:0;' +
+            '}' +
+
+            '.animevost-v032-detail{' +
+                'padding:1.5em 2.6em 5em;' +
+            '}' +
+
+            '.animevost-v032-detail__wrap{' +
                 'display:flex;' +
                 'align-items:flex-start;' +
             '}' +
 
-            '.animevost-v031-detail__poster{' +
+            '.animevost-v032-detail__poster{' +
                 'width:15em;' +
                 'min-width:15em;' +
                 'height:21em;' +
@@ -659,36 +723,36 @@
                 'background:rgba(255,255,255,.08);' +
             '}' +
 
-            '.animevost-v031-detail__poster img{' +
+            '.animevost-v032-detail__poster img{' +
                 'width:100%;' +
                 'height:100%;' +
                 'object-fit:cover;' +
             '}' +
 
-            '.animevost-v031-detail__body{' +
+            '.animevost-v032-detail__body{' +
                 'max-width:62em;' +
             '}' +
 
-            '.animevost-v031-detail__title{' +
+            '.animevost-v032-detail__title{' +
                 'font-size:2em;' +
                 'font-weight:600;' +
                 'line-height:1.2;' +
                 'margin-bottom:.7em;' +
             '}' +
 
-            '.animevost-v031-detail__meta{' +
+            '.animevost-v032-detail__meta{' +
                 'font-size:1.08em;' +
                 'line-height:1.55;' +
                 'opacity:.78;' +
                 'margin-bottom:1em;' +
             '}' +
 
-            '.animevost-v031-detail__description{' +
+            '.animevost-v032-detail__description{' +
                 'font-size:1.05em;' +
                 'line-height:1.55;' +
             '}' +
 
-            '.animevost-v031-detail__note{' +
+            '.animevost-v032-detail__note{' +
                 'margin-top:1.4em;' +
                 'padding:1em 1.2em;' +
                 'background:rgba(255,255,255,.08);' +
@@ -697,8 +761,8 @@
             '}';
 
         $('head').append(
-            '<style id="animevost-v031-style">' +
-            css +
+            '<style id="animevost-v032-style">' +
+                css +
             '</style>'
         );
     }
@@ -718,13 +782,15 @@
                 CATALOG,
 
             av_path:
-                path || '/',
+                path ||
+                '/',
 
             av_title:
                 title ||
                 'AnimeVost',
 
-            page: 1
+            page:
+                1
         });
     }
 
@@ -744,7 +810,8 @@
         }
 
         Lampa.Select.show({
-            title: title,
+            title:
+                title,
 
             items:
                 list.map(
@@ -778,57 +845,57 @@
     }
 
     /*
-     * Basic detail page.
-     *
-     * Full episode loading
-     * comes after catalogue
-     * navigation is confirmed.
+     * Detail page
      */
 
     function DetailComponent(
         object
     ) {
-        var scroll =
-            new Lampa.Scroll({
-                mask: true,
-                over: true,
-                step: 250
-            });
+        var viewport =
+            $(
+                '<div class="' +
+                'animevost-v032-detail-viewport' +
+                '"></div>'
+            );
 
         var root =
             $(
                 '<div class="' +
-                'animevost-v031-detail' +
+                'animevost-v032-detail' +
                 '"></div>'
             );
 
         var item =
-            object.av_item || {};
+            object.av_item ||
+            {};
 
         this.create =
             function () {
+
                 var wrap =
                     $(
                         '<div class="' +
-                        'animevost-v031-detail__wrap' +
+                        'animevost-v032-detail__wrap' +
                         '"></div>'
                     );
 
                 var poster =
                     $(
                         '<div class="' +
-                        'animevost-v031-detail__poster' +
+                        'animevost-v032-detail__poster' +
                         '"></div>'
                     );
 
                 var body =
                     $(
                         '<div class="' +
-                        'animevost-v031-detail__body' +
+                        'animevost-v032-detail__body' +
                         '"></div>'
                     );
 
-                if (item.poster) {
+                if (
+                    item.poster
+                ) {
                     var image =
                         $('<img alt="">')
                             .attr(
@@ -843,7 +910,7 @@
                                 .empty()
                                 .append(
                                     '<div class="' +
-                                    'animevost-v031__fallback' +
+                                    'animevost-v032__fallback' +
                                     '">' +
                                     'AnimeVost' +
                                     '</div>'
@@ -855,10 +922,11 @@
                         image
                     );
                 }
+
                 else {
                     poster.append(
                         '<div class="' +
-                        'animevost-v031__fallback' +
+                        'animevost-v032__fallback' +
                         '">' +
                         'AnimeVost' +
                         '</div>'
@@ -868,7 +936,7 @@
                 body.append(
                     $(
                         '<div class="' +
-                        'animevost-v031-detail__title' +
+                        'animevost-v032-detail__title' +
                         '"></div>'
                     ).text(
                         item.title ||
@@ -878,28 +946,36 @@
 
                 var meta = [];
 
-                if (item.year) {
+                if (
+                    item.year
+                ) {
                     meta.push(
                         'Год: ' +
                         item.year
                     );
                 }
 
-                if (item.type) {
+                if (
+                    item.type
+                ) {
                     meta.push(
                         'Тип: ' +
                         item.type
                     );
                 }
 
-                if (item.episodes) {
+                if (
+                    item.episodes
+                ) {
                     meta.push(
                         'Серии: ' +
                         item.episodes
                     );
                 }
 
-                if (item.genre) {
+                if (
+                    item.genre
+                ) {
                     meta.push(
                         'Жанр: ' +
                         item.genre
@@ -909,7 +985,7 @@
                 body.append(
                     $(
                         '<div class="' +
-                        'animevost-v031-detail__meta' +
+                        'animevost-v032-detail__meta' +
                         '"></div>'
                     ).text(
                         meta.join(
@@ -921,7 +997,7 @@
                 body.append(
                     $(
                         '<div class="' +
-                        'animevost-v031-detail__description' +
+                        'animevost-v032-detail__description' +
                         '"></div>'
                     ).text(
                         item.description ||
@@ -931,22 +1007,26 @@
 
                 body.append(
                     '<div class="' +
-                    'animevost-v031-detail__note' +
+                    'animevost-v032-detail__note' +
                     '">' +
-                    'V0.3.1: исправлена навигация и прокрутка каталога. ' +
-                    'Список серий и просмотр добавим после проверки этой версии.' +
+                    'V0.3.2: каталог использует собственную вертикальную прокрутку. ' +
+                    'Серии добавим после проверки навигации.' +
                     '</div>'
                 );
 
                 wrap
-                    .append(poster)
-                    .append(body);
+                    .append(
+                        poster
+                    )
+                    .append(
+                        body
+                    );
 
                 root.append(
                     wrap
                 );
 
-                scroll.append(
+                viewport.append(
                     root
                 );
 
@@ -955,14 +1035,16 @@
 
         this.start =
             function () {
+
                 Lampa.Controller.add(
                     'content',
+
                     {
                         toggle:
                             function () {
                                 Lampa.Controller
                                     .collectionSet(
-                                        scroll.render()
+                                        viewport
                                     );
                             },
 
@@ -976,10 +1058,21 @@
 
                         up:
                             function () {
-                                Lampa.Controller
-                                    .toggle(
-                                        'head'
+                                viewport[0]
+                                    .scrollTop =
+                                    Math.max(
+                                        0,
+                                        viewport[0]
+                                            .scrollTop -
+                                            260
                                     );
+                            },
+
+                        down:
+                            function () {
+                                viewport[0]
+                                    .scrollTop +=
+                                    260;
                             },
 
                         back:
@@ -1004,18 +1097,18 @@
 
         this.render =
             function () {
-                return scroll.render();
+                return viewport;
             };
 
         this.destroy =
             function () {
-                scroll.destroy();
+                viewport.remove();
                 root.remove();
             };
     }
 
     /*
-     * Catalogue component.
+     * Catalogue
      */
 
     function CatalogComponent(
@@ -1024,26 +1117,30 @@
         var network =
             new Lampa.Reguest();
 
-        var scroll =
-            new Lampa.Scroll({
-                mask: true,
-                over: true,
-                step: 250
-            });
+        /*
+         * Important change:
+         *
+         * This is now a REAL
+         * vertically scrollable
+         * browser container.
+         */
+
+        var viewport =
+            $(
+                '<div class="' +
+                'animevost-v032-viewport' +
+                '"></div>'
+            );
 
         var root =
             $(
                 '<div class="' +
-                'animevost-v031' +
+                'animevost-v032' +
                 '"></div>'
             );
 
-        /*
-         * Remember currently
-         * focused TV element.
-         */
-
-        var last = null;
+        var last =
+            null;
 
         var parsedMenu = {
             genres: [],
@@ -1051,88 +1148,150 @@
             years: []
         };
 
-        var self = this;
+        var self =
+            this;
 
         var path =
-            object.av_path || '/';
+            object.av_path ||
+            '/';
 
         var title =
             object.av_title ||
             'AnimeVost';
 
-        /*
-         * Get all currently
-         * visible selectable
-         * objects on the page.
-         */
-
-        function getSelectors() {
-            var result = [];
-
-            try {
-                root.find(
-                    '.selector'
-                ).each(
-                    function () {
-                        if (
-                            this &&
-                            this.offsetParent !== null
-                        ) {
-                            result.push(
-                                this
-                            );
-                        }
-                    }
-                );
-            }
-            catch (e) {}
-
-            return result;
+        function getCards() {
+            return root
+                .find(
+                    '.animevost-v032__card'
+                )
+                .toArray();
         }
 
-        /*
-         * Find current focused item.
-         */
+        function getNavButtons() {
+            return root
+                .find(
+                    '.animevost-v032__navbtn'
+                )
+                .toArray();
+        }
 
-        function getCurrentFocus() {
+        function getCurrent() {
+
             if (
                 last &&
-                document.documentElement
-                    .contains(last)
+                document
+                    .documentElement
+                    .contains(
+                        last
+                    )
             ) {
                 return last;
             }
 
-            try {
-                var focused =
-                    root.find(
+            var focused =
+                root
+                    .find(
                         '.selector.focus'
                     )[0];
 
-                if (focused) {
-                    return focused;
-                }
+            if (
+                focused
+            ) {
+                return focused;
             }
-            catch (e) {}
 
-            var selectors =
-                getSelectors();
+            var nav =
+                getNavButtons();
 
-            return selectors.length
-                ? selectors[0]
+            if (
+                nav.length
+            ) {
+                return nav[0];
+            }
+
+            var cards =
+                getCards();
+
+            return cards.length
+                ? cards[0]
                 : null;
         }
 
         /*
-         * Focus a specific element
-         * AND tell Lampa.Scroll to
-         * bring it into the viewport.
+         * This actually scrolls
+         * the catalogue viewport.
          */
+
+        function ensureVisible(
+            element
+        ) {
+            if (
+                !element ||
+                !viewport[0]
+            ) {
+                return;
+            }
+
+            var vp =
+                viewport[0];
+
+            var er =
+                element
+                    .getBoundingClientRect();
+
+            var vr =
+                vp
+                    .getBoundingClientRect();
+
+            var topPad =
+                22;
+
+            var bottomPad =
+                38;
+
+            /*
+             * Focused row is below
+             * visible TV area.
+             */
+
+            if (
+                er.bottom >
+                vr.bottom -
+                bottomPad
+            ) {
+                vp.scrollTop +=
+                    er.bottom -
+                    (
+                        vr.bottom -
+                        bottomPad
+                    );
+            }
+
+            /*
+             * Focused row is above
+             * visible TV area.
+             */
+
+            else if (
+                er.top <
+                vr.top +
+                topPad
+            ) {
+                vp.scrollTop -=
+                    (
+                        vr.top +
+                        topPad
+                    ) -
+                    er.top;
+            }
+        }
 
         function focusElement(
             element
         ) {
-            if (!element) {
+            if (
+                !element
+            ) {
                 return false;
             }
 
@@ -1143,222 +1302,424 @@
                 Lampa.Controller
                     .collectionFocus(
                         element,
-                        scroll.render()
+                        viewport
                     );
             }
             catch (e) {}
 
-            try {
-                scroll.update(
-                    $(element),
-                    true
-                );
-            }
-            catch (e2) {}
+            ensureVisible(
+                element
+            );
 
             return true;
         }
 
         /*
-         * Explicit TV directional
-         * navigation.
+         * Count actual columns
+         * in first rendered row.
          *
-         * This is the important
-         * V0.3.1 change.
-         *
-         * Instead of depending on
-         * Navigator.canmove(), we
-         * calculate which selectable
-         * element is physically nearest
-         * in the requested direction.
+         * On your TV this should
+         * return 6.
          */
 
-        function findDirectionalTarget(
-            current,
-            direction
+        function cardColumns() {
+            var cards =
+                getCards();
+
+            if (
+                !cards.length
+            ) {
+                return 0;
+            }
+
+            if (
+                cards.length === 1
+            ) {
+                return 1;
+            }
+
+            var firstTop =
+                cards[0]
+                    .offsetTop;
+
+            var count =
+                1;
+
+            var i;
+
+            for (
+                i = 1;
+                i < cards.length;
+                i++
+            ) {
+                if (
+                    Math.abs(
+                        cards[i]
+                            .offsetTop -
+                        firstTop
+                    ) <= 8
+                ) {
+                    count++;
+                }
+
+                else {
+                    break;
+                }
+            }
+
+            return Math.max(
+                1,
+                count
+            );
+        }
+
+        /*
+         * When pressing Up from
+         * the first anime row,
+         * find the menu button
+         * above that card.
+         */
+
+        function closestNavToCard(
+            card
         ) {
-            if (!current) {
+            var nav =
+                getNavButtons();
+
+            if (
+                !nav.length ||
+                !card
+            ) {
                 return null;
             }
 
-            var currentRect =
-                current.getBoundingClientRect();
+            var cr =
+                card
+                    .getBoundingClientRect();
 
-            var currentX =
-                currentRect.left +
-                currentRect.width / 2;
+            var cx =
+                cr.left +
+                cr.width / 2;
 
-            var currentY =
-                currentRect.top +
-                currentRect.height / 2;
+            var best =
+                nav[0];
 
-            var candidates =
-                getSelectors();
-
-            var best = null;
-
-            var bestScore =
+            var bestDistance =
                 Infinity;
 
             var i;
 
             for (
                 i = 0;
-                i < candidates.length;
+                i < nav.length;
                 i++
             ) {
-                var candidate =
-                    candidates[i];
-
-                if (
-                    candidate === current
-                ) {
-                    continue;
-                }
-
-                var rect =
-                    candidate
+                var nr =
+                    nav[i]
                         .getBoundingClientRect();
 
-                var x =
-                    rect.left +
-                    rect.width / 2;
+                var nx =
+                    nr.left +
+                    nr.width / 2;
 
-                var y =
-                    rect.top +
-                    rect.height / 2;
-
-                var dx =
-                    x - currentX;
-
-                var dy =
-                    y - currentY;
-
-                var primary;
-                var secondary;
-
-                /*
-                 * Small 20px tolerance
-                 * prevents neighbouring
-                 * cards in the same row
-                 * being interpreted as
-                 * above/below.
-                 */
+                var distance =
+                    Math.abs(
+                        nx -
+                        cx
+                    );
 
                 if (
-                    direction === 'down'
+                    distance <
+                    bestDistance
                 ) {
-                    if (dy <= 20) {
-                        continue;
-                    }
-
-                    primary =
-                        dy;
-
-                    secondary =
-                        Math.abs(dx);
-                }
-
-                else if (
-                    direction === 'up'
-                ) {
-                    if (dy >= -20) {
-                        continue;
-                    }
-
-                    primary =
-                        -dy;
-
-                    secondary =
-                        Math.abs(dx);
-                }
-
-                else if (
-                    direction === 'right'
-                ) {
-                    if (dx <= 20) {
-                        continue;
-                    }
-
-                    primary =
-                        dx;
-
-                    secondary =
-                        Math.abs(dy);
-                }
-
-                else if (
-                    direction === 'left'
-                ) {
-                    if (dx >= -20) {
-                        continue;
-                    }
-
-                    primary =
-                        -dx;
-
-                    secondary =
-                        Math.abs(dy);
-                }
-
-                else {
-                    continue;
-                }
-
-                /*
-                 * Direction distance is
-                 * far more important than
-                 * sideways distance.
-                 *
-                 * This means Down favours
-                 * the nearest NEXT ROW,
-                 * then the nearest column.
-                 */
-
-                var score =
-                    primary * 1000 +
-                    secondary;
-
-                if (
-                    score < bestScore
-                ) {
-                    bestScore =
-                        score;
+                    bestDistance =
+                        distance;
 
                     best =
-                        candidate;
+                        nav[i];
                 }
             }
 
             return best;
         }
 
-        function moveFocus(
+        /*
+         * Explicit row / column
+         * navigation.
+         */
+
+        function move(
             direction
         ) {
             var current =
-                getCurrentFocus();
+                getCurrent();
 
-            var target =
-                findDirectionalTarget(
-                    current,
-                    direction
-                );
-
-            if (target) {
-                return focusElement(
-                    target
-                );
+            if (
+                !current
+            ) {
+                return false;
             }
 
-            return false;
+            var isNav =
+                $(
+                    current
+                ).hasClass(
+                    'animevost-v032__navbtn'
+                );
+
+            var isCard =
+                $(
+                    current
+                ).hasClass(
+                    'animevost-v032__card'
+                );
+
+            var nav =
+                getNavButtons();
+
+            var cards =
+                getCards();
+
+            var target =
+                null;
+
+            var index;
+            var columns;
+
+            /*
+             * Top menu navigation
+             */
+
+            if (
+                isNav
+            ) {
+                index =
+                    nav.indexOf(
+                        current
+                    );
+
+                if (
+                    direction ===
+                    'left' &&
+                    index > 0
+                ) {
+                    target =
+                        nav[
+                            index - 1
+                        ];
+                }
+
+                else if (
+                    direction ===
+                    'right' &&
+                    index >= 0 &&
+                    index <
+                    nav.length - 1
+                ) {
+                    target =
+                        nav[
+                            index + 1
+                        ];
+                }
+
+                /*
+                 * Down from top menu
+                 * finds the closest
+                 * card horizontally.
+                 */
+
+                else if (
+                    direction ===
+                    'down' &&
+                    cards.length
+                ) {
+                    var nr =
+                        current
+                            .getBoundingClientRect();
+
+                    var nx =
+                        nr.left +
+                        nr.width / 2;
+
+                    var bestDistance =
+                        Infinity;
+
+                    var i;
+
+                    for (
+                        i = 0;
+                        i <
+                        Math.min(
+                            cardColumns(),
+                            cards.length
+                        );
+                        i++
+                    ) {
+                        var cr =
+                            cards[i]
+                                .getBoundingClientRect();
+
+                        var cx =
+                            cr.left +
+                            cr.width / 2;
+
+                        var d =
+                            Math.abs(
+                                cx -
+                                nx
+                            );
+
+                        if (
+                            d <
+                            bestDistance
+                        ) {
+                            bestDistance =
+                                d;
+
+                            target =
+                                cards[i];
+                        }
+                    }
+                }
+            }
+
+            /*
+             * Anime card navigation
+             */
+
+            if (
+                isCard
+            ) {
+                index =
+                    cards.indexOf(
+                        current
+                    );
+
+                columns =
+                    cardColumns();
+
+                if (
+                    index < 0 ||
+                    !columns
+                ) {
+                    return false;
+                }
+
+                var row =
+                    Math.floor(
+                        index /
+                        columns
+                    );
+
+                var col =
+                    index %
+                    columns;
+
+                /*
+                 * SAME ROW LEFT
+                 */
+
+                if (
+                    direction ===
+                    'left' &&
+                    col > 0
+                ) {
+                    target =
+                        cards[
+                            index - 1
+                        ];
+                }
+
+                /*
+                 * SAME ROW RIGHT
+                 */
+
+                else if (
+                    direction ===
+                    'right' &&
+                    col <
+                    columns - 1 &&
+                    index + 1 <
+                    cards.length
+                ) {
+                    target =
+                        cards[
+                            index + 1
+                        ];
+                }
+
+                /*
+                 * EXACT SAME COLUMN
+                 * ON NEXT ROW
+                 */
+
+                else if (
+                    direction ===
+                    'down'
+                ) {
+                    var downIndex =
+                        index +
+                        columns;
+
+                    if (
+                        downIndex <
+                        cards.length
+                    ) {
+                        target =
+                            cards[
+                                downIndex
+                            ];
+                    }
+                }
+
+                /*
+                 * EXACT SAME COLUMN
+                 * ON PREVIOUS ROW
+                 */
+
+                else if (
+                    direction ===
+                    'up'
+                ) {
+                    if (
+                        row > 0
+                    ) {
+                        var upIndex =
+                            index -
+                            columns;
+
+                        if (
+                            upIndex >= 0
+                        ) {
+                            target =
+                                cards[
+                                    upIndex
+                                ];
+                        }
+                    }
+
+                    else {
+                        target =
+                            closestNavToCard(
+                                current
+                            );
+                    }
+                }
+            }
+
+            return target
+                ? focusElement(
+                    target
+                )
+                : false;
         }
 
         function addNavigation() {
+
             var nav =
                 $(
                     '<div class="' +
-                    'animevost-v031__nav' +
+                    'animevost-v032__nav' +
                     '"></div>'
                 );
 
@@ -1369,7 +1730,7 @@
                 var element =
                     $(
                         '<div class="' +
-                        'animevost-v031__navbtn selector' +
+                        'animevost-v032__navbtn selector' +
                         '"></div>'
                     ).text(
                         label
@@ -1386,9 +1747,8 @@
                         last =
                             element[0];
 
-                        scroll.update(
-                            element,
-                            true
+                        ensureVisible(
+                            element[0]
                         );
                     }
                 );
@@ -1471,7 +1831,7 @@
             root.append(
                 $(
                     '<div class="' +
-                    'animevost-v031__title' +
+                    'animevost-v032__title' +
                     '"></div>'
                 ).text(
                     title
@@ -1481,19 +1841,17 @@
             root.append(
                 $(
                     '<div class="' +
-                    'animevost-v031__status' +
+                    'animevost-v032__status' +
                     '"></div>'
                 ).text(
                     text
                 )
             );
 
-            scroll.append(
-                root
-            );
-
             self.activity
-                .loader(false);
+                .loader(
+                    false
+                );
 
             self.start();
         }
@@ -1506,10 +1864,20 @@
             last =
                 null;
 
+            /*
+             * Reset catalogue back
+             * to top whenever a new
+             * section is opened.
+             */
+
+            viewport[0]
+                .scrollTop =
+                0;
+
             root.append(
                 $(
                     '<div class="' +
-                    'animevost-v031__title' +
+                    'animevost-v032__title' +
                     '"></div>'
                 ).text(
                     title
@@ -1523,18 +1891,16 @@
             ) {
                 root.append(
                     '<div class="' +
-                    'animevost-v031__status' +
+                    'animevost-v032__status' +
                     '">' +
                     'Карточки аниме на этой странице не найдены.' +
                     '</div>'
                 );
 
-                scroll.append(
-                    root
-                );
-
                 self.activity
-                    .loader(false);
+                    .loader(
+                        false
+                    );
 
                 self.start();
 
@@ -1544,27 +1910,30 @@
             var grid =
                 $(
                     '<div class="' +
-                    'animevost-v031__grid' +
+                    'animevost-v032__grid' +
                     '"></div>'
                 );
 
             data.items.forEach(
                 function (item) {
+
                     var card =
                         $(
                             '<div class="' +
-                            'animevost-v031__card selector' +
+                            'animevost-v032__card selector' +
                             '"></div>'
                         );
 
                     var poster =
                         $(
                             '<div class="' +
-                            'animevost-v031__poster' +
+                            'animevost-v032__poster' +
                             '"></div>'
                         );
 
-                    if (item.poster) {
+                    if (
+                        item.poster
+                    ) {
                         var image =
                             $('<img alt="">')
                                 .attr(
@@ -1579,7 +1948,7 @@
                                     .empty()
                                     .append(
                                         '<div class="' +
-                                        'animevost-v031__fallback' +
+                                        'animevost-v032__fallback' +
                                         '">' +
                                         'AnimeVost' +
                                         '</div>'
@@ -1591,10 +1960,11 @@
                             image
                         );
                     }
+
                     else {
                         poster.append(
                             '<div class="' +
-                            'animevost-v031__fallback' +
+                            'animevost-v032__fallback' +
                             '">' +
                             'AnimeVost' +
                             '</div>'
@@ -1603,19 +1973,25 @@
 
                     var meta = [];
 
-                    if (item.year) {
+                    if (
+                        item.year
+                    ) {
                         meta.push(
                             item.year
                         );
                     }
 
-                    if (item.type) {
+                    if (
+                        item.type
+                    ) {
                         meta.push(
                             item.type
                         );
                     }
 
-                    if (item.episodes) {
+                    if (
+                        item.episodes
+                    ) {
                         meta.push(
                             item.episodes
                                 .replace(
@@ -1632,7 +2008,7 @@
                     card.append(
                         $(
                             '<div class="' +
-                            'animevost-v031__name' +
+                            'animevost-v032__name' +
                             '"></div>'
                         ).text(
                             item.title
@@ -1642,7 +2018,7 @@
                     card.append(
                         $(
                             '<div class="' +
-                            'animevost-v031__meta' +
+                            'animevost-v032__meta' +
                             '"></div>'
                         ).text(
                             meta.join(
@@ -1652,10 +2028,10 @@
                     );
 
                     /*
-                     * Whenever focus changes,
-                     * remember the card and
-                     * force Lampa.Scroll to
-                     * follow it.
+                     * Whenever a card
+                     * receives focus,
+                     * make absolutely
+                     * sure it is visible.
                      */
 
                     card.on(
@@ -1664,9 +2040,8 @@
                             last =
                                 card[0];
 
-                            scroll.update(
-                                card,
-                                true
+                            ensureVisible(
+                                card[0]
                             );
                         }
                     );
@@ -1675,7 +2050,8 @@
                         'hover:enter',
                         function () {
                             Lampa.Activity.push({
-                                url: '',
+                                url:
+                                    '',
 
                                 title:
                                     item.title,
@@ -1686,7 +2062,8 @@
                                 av_item:
                                     item,
 
-                                page: 1
+                                page:
+                                    1
                             });
                         }
                     );
@@ -1701,49 +2078,58 @@
                 grid
             );
 
-            scroll.append(
-                root
-            );
-
             self.activity
-                .loader(false);
+                .loader(
+                    false
+                );
 
             self.start();
 
-            /*
-             * Give WebOS a moment
-             * to calculate positions,
-             * then create an initial
-             * focus if needed.
-             */
-
             setTimeout(
                 function () {
-                    var selectors =
-                        getSelectors();
+
+                    var nav =
+                        getNavButtons();
+
+                    var cards =
+                        getCards();
 
                     if (
-                        !last &&
-                        selectors.length
+                        nav.length
                     ) {
                         focusElement(
-                            selectors[0]
+                            nav[0]
+                        );
+                    }
+
+                    else if (
+                        cards.length
+                    ) {
+                        focusElement(
+                            cards[0]
                         );
                     }
                 },
-                50
+                80
             );
         }
 
         this.create =
             function () {
+
                 self.activity
-                    .loader(true);
+                    .loader(
+                        true
+                    );
+
+                viewport.append(
+                    root
+                );
 
                 root.append(
                     $(
                         '<div class="' +
-                        'animevost-v031__title' +
+                        'animevost-v032__title' +
                         '"></div>'
                     ).text(
                         title
@@ -1752,14 +2138,10 @@
 
                 root.append(
                     '<div class="' +
-                    'animevost-v031__status' +
+                    'animevost-v032__status' +
                     '">' +
                     'Загрузка AnimeVost...' +
                     '</div>'
-                );
-
-                scroll.append(
-                    root
                 );
 
                 network.timeout(
@@ -1767,16 +2149,19 @@
                 );
 
                 network.silent(
+
                     workerUrl(
                         path
                     ),
 
                     function (html) {
+
                         try {
                             var parsed =
                                 parseItems(
                                     String(
-                                        html || ''
+                                        html ||
+                                        ''
                                     )
                                 );
 
@@ -1787,7 +2172,9 @@
                                 parsed
                             );
                         }
+
                         catch (error) {
+
                             console.log(
                                 'AnimeVost parse error',
                                 error
@@ -1806,7 +2193,9 @@
                     },
 
                     function (error) {
-                        var code = '?';
+
+                        var code =
+                            '?';
 
                         try {
                             code =
@@ -1833,6 +2222,7 @@
 
         this.start =
             function () {
+
                 if (
                     Lampa.Activity
                         .active()
@@ -1844,33 +2234,37 @@
 
                 Lampa.Controller.add(
                     'content',
+
                     {
                         toggle:
                             function () {
+
                                 Lampa.Controller
                                     .collectionSet(
-                                        scroll.render()
+                                        viewport
                                     );
 
                                 Lampa.Controller
                                     .collectionFocus(
-                                        last || false,
-                                        scroll.render()
+                                        last ||
+                                        false,
+                                        viewport
                                     );
-                            },
 
-                        /*
-                         * Explicit navigation.
-                         *
-                         * If there is no item
-                         * to the left, open
-                         * Lampa side menu.
-                         */
+                                if (
+                                    last
+                                ) {
+                                    ensureVisible(
+                                        last
+                                    );
+                                }
+                            },
 
                         left:
                             function () {
+
                                 if (
-                                    !moveFocus(
+                                    !move(
                                         'left'
                                     )
                                 ) {
@@ -1883,21 +2277,16 @@
 
                         right:
                             function () {
-                                moveFocus(
+                                move(
                                     'right'
                                 );
                             },
 
-                        /*
-                         * If there is nothing
-                         * above, switch to
-                         * Lampa header.
-                         */
-
                         up:
                             function () {
+
                                 if (
-                                    !moveFocus(
+                                    !move(
                                         'up'
                                     )
                                 ) {
@@ -1909,14 +2298,14 @@
                             },
 
                         /*
-                         * Important:
-                         * Down now explicitly
-                         * finds the next row.
+                         * Down now moves
+                         * by exact row and
+                         * forces scrolling.
                          */
 
                         down:
                             function () {
-                                moveFocus(
+                                move(
                                     'down'
                                 );
                             },
@@ -1943,24 +2332,28 @@
 
         this.render =
             function () {
-                return scroll.render();
+                return viewport;
             };
 
         this.destroy =
             function () {
                 network.clear();
-                scroll.destroy();
+
+                viewport.remove();
+
                 root.remove();
             };
     }
 
     function addMenuButton() {
+
         var button =
             $(
                 '<li class="' +
                 'menu__item selector' +
-                '" data-action="' +
-                'animevost_v031' +
+                '" ' +
+                'data-action="' +
+                'animevost_v032' +
                 '">' +
 
                     '<div class="menu__ico">' +
@@ -1991,6 +2384,7 @@
 
         button.on(
             'hover:enter',
+
             function () {
                 openCatalog(
                     '/',
@@ -2007,11 +2401,15 @@
     }
 
     function init() {
-        if (window[FLAG]) {
+
+        if (
+            window[FLAG]
+        ) {
             return;
         }
 
-        window[FLAG] = true;
+        window[FLAG] =
+            true;
 
         try {
             injectStyle();
@@ -2029,28 +2427,35 @@
             addMenuButton();
 
             notify(
-                'AnimeVost V0.3.1 загружен'
+                'AnimeVost V0.3.2 загружен'
             );
         }
+
         catch (error) {
+
             console.log(
-                'AnimeVost V0.3.1 init error',
+                'AnimeVost V0.3.2 init error',
                 error
             );
 
             notify(
-                'Ошибка запуска AnimeVost V0.3.1'
+                'Ошибка запуска AnimeVost V0.3.2'
             );
         }
     }
 
-    if (window.appready) {
+    if (
+        window.appready
+    ) {
         init();
     }
+
     else {
         Lampa.Listener.follow(
             'app',
+
             function (event) {
+
                 if (
                     event &&
                     event.type ===
