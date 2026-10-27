@@ -1,11 +1,25 @@
 (function () {
     'use strict';
 
-    var NS = 'animevost_v050';
-    var FLAG = NS + '_ready';
-    var CATALOG = NS + '_catalog';
-    var DETAIL = NS + '_detail';
-    var TV_CONTROLLER = NS + '_tv';
+    var NS =
+        'animevost_v051';
+
+    var FLAG =
+        NS +
+        '_ready';
+
+    var CATALOG =
+        NS +
+        '_catalog';
+
+    var DETAIL =
+        NS +
+        '_detail';
+
+    var TV_CONTROLLER =
+        NS +
+        '_tv';
+
 
     var WORKER =
         'https://animevost-lampa.kalewse69.workers.dev/';
@@ -13,25 +27,33 @@
     var ORIGIN =
         'https://animevost.org';
 
-    var DETAIL_CACHE = {};
+
+    var DETAIL_CACHE =
+        {};
 
     var tvSession =
         null;
 
 
-    function notify(text) {
+    function notify(
+        text
+    ) {
         try {
             Lampa.Noty.show(
                 text
             );
         }
+
         catch (e) {}
     }
 
 
-    function clean(text) {
+    function clean(
+        text
+    ) {
         return String(
-            text || ''
+            text ||
+            ''
         )
         .replace(
             /\u00a0/g,
@@ -52,27 +74,36 @@
         value,
         fallback
     ) {
-        var n =
+        var number =
             parseInt(
                 value,
                 10
             );
 
-        return isNaN(n)
+
+        return isNaN(
+            number
+        )
             ? fallback
-            : n;
+            : number;
     }
 
 
-    function absoluteUrl(value) {
+    function absoluteUrl(
+        value
+    ) {
         value =
             clean(
                 value
             );
 
-        if (!value) {
+
+        if (
+            !value
+        ) {
             return '';
         }
+
 
         if (
             /^https?:\/\//i
@@ -83,10 +114,12 @@
             return value;
         }
 
+
         if (
             value.indexOf(
                 '//'
-            ) === 0
+            ) ===
+            0
         ) {
             return (
                 'https:' +
@@ -94,14 +127,18 @@
             );
         }
 
+
         if (
-            value.charAt(0) !==
+            value.charAt(
+                0
+            ) !==
             '/'
         ) {
             value =
                 '/' +
                 value;
         }
+
 
         return (
             ORIGIN +
@@ -110,15 +147,21 @@
     }
 
 
-    function toPath(value) {
+    function toPath(
+        value
+    ) {
         value =
             clean(
                 value
             );
 
-        if (!value) {
+
+        if (
+            !value
+        ) {
             return '/';
         }
+
 
         try {
             if (
@@ -127,28 +170,34 @@
                         value
                     )
             ) {
-                var a =
+                var anchor =
                     document
                         .createElement(
                             'a'
                         );
 
-                a.href =
+
+                anchor.href =
                     value;
 
+
                 return (
-                    a.pathname ||
+                    anchor.pathname ||
                     '/'
                 ) + (
-                    a.search ||
+                    anchor.search ||
                     ''
                 );
             }
         }
+
         catch (e) {}
 
+
         return (
-            value.charAt(0) ===
+            value.charAt(
+                0
+            ) ===
             '/'
         )
             ? value
@@ -156,7 +205,9 @@
     }
 
 
-    function workerUrl(path) {
+    function workerUrl(
+        path
+    ) {
         return (
             WORKER +
             '?path=' +
@@ -175,26 +226,30 @@
         episode,
         player
     ) {
-        var p =
+        var cleanPath =
             toPath(
                 path ||
                 '/'
             );
 
-        var q =
-            p.indexOf(
+
+        var queryIndex =
+            cleanPath.indexOf(
                 '?'
             );
 
+
         if (
-            q >= 0
+            queryIndex >=
+            0
         ) {
-            p =
-                p.substring(
+            cleanPath =
+                cleanPath.substring(
                     0,
-                    q
+                    queryIndex
                 );
         }
+
 
         return (
             WORKER
@@ -202,18 +257,23 @@
                     /\/$/,
                     ''
                 ) +
-            p +
+
+            cleanPath +
+
             '?avtv=1' +
+
             '&episode=' +
             encodeURIComponent(
                 episode ||
                 0
             ) +
+
             '&player=' +
             encodeURIComponent(
                 player ||
                 1
             ) +
+
             '&_=' +
             new Date()
                 .getTime()
@@ -234,6 +294,7 @@
                 expression
             );
 
+
         return (
             match &&
             match[1]
@@ -245,11 +306,14 @@
     }
 
 
-    function textOf(node) {
+    function textOf(
+        node
+    ) {
         try {
             return clean(
                 node &&
                 node.textContent
+
                     ? node.textContent
                     : ''
             );
@@ -261,27 +325,32 @@
     }
 
 
-    function sameAnimeUrl(path) {
-        return (
-            /^\/tip\/[^/]+\/[^?#]+\.html(?:\?.*)?$/i
-                .test(
-                    toPath(
-                        path
-                    )
+    function sameAnimeUrl(
+        path
+    ) {
+        return /^\/tip\/[^/]+\/[^?#]+\.html(?:\?.*)?$/i
+            .test(
+                toPath(
+                    path
                 )
-        );
+            );
     }
 
 
-    function findArticleContainer(node) {
+    function findArticleContainer(
+        node
+    ) {
         var current =
             node;
+
 
         var best =
             node &&
             node.parentElement
+
                 ? node.parentElement
                 : node;
+
 
         var i;
 
@@ -296,6 +365,7 @@
                 textOf(
                     current
                 );
+
 
             var count =
                 0;
@@ -316,17 +386,23 @@
             if (
                 text.indexOf(
                     'Год выхода:'
-                ) >= 0 &&
+                ) >=
+                    0 &&
+
                 (
                     text.indexOf(
                         'Описание:'
-                    ) >= 0 ||
+                    ) >=
+                        0 ||
+
                     text.indexOf(
                         'Количество серий:'
-                    ) >= 0
+                    ) >=
+                        0
                 ) &&
+
                 count <=
-                1
+                    1
             ) {
                 return current;
             }
@@ -357,7 +433,9 @@
         container,
         href
     ) {
-        if (!container) {
+        if (
+            !container
+        ) {
             return '';
         }
 
@@ -393,29 +471,35 @@
                 ) ===
                 wanted
             ) {
-                var img =
+                var image =
                     links[i]
                         .querySelector(
                             'img'
                         );
 
 
-                if (img) {
-                    var src =
-                        img
+                if (
+                    image
+                ) {
+                    var source =
+                        image
                             .getAttribute(
                                 'data-src'
                             ) ||
-                        img
+
+                        image
                             .getAttribute(
                                 'src'
                             ) ||
+
                         '';
 
 
-                    if (src) {
+                    if (
+                        source
+                    ) {
                         return absoluteUrl(
-                            src
+                            source
                         );
                     }
                 }
@@ -435,15 +519,17 @@
             i < images.length;
             i++
         ) {
-            var source =
+            var src =
                 images[i]
                     .getAttribute(
                         'data-src'
                     ) ||
+
                 images[i]
                     .getAttribute(
                         'src'
                     ) ||
+
                 '';
 
 
@@ -458,11 +544,12 @@
 
 
             var lower =
-                source
-                    .toLowerCase();
+                src.toLowerCase();
 
 
-            if (!source) {
+            if (
+                !src
+            ) {
                 continue;
             }
 
@@ -479,13 +566,14 @@
 
             if (
                 alt ||
+
                 /uploads|poster|story|covers?/i
                     .test(
-                        source
+                        src
                     )
             ) {
                 return absoluteUrl(
-                    source
+                    src
                 );
             }
         }
@@ -495,11 +583,18 @@
     }
 
 
-    function parseMenu(doc) {
+    function parseMenu(
+        doc
+    ) {
         var result = {
-            genres: [],
-            types: [],
-            years: []
+            genres:
+                [],
+
+            types:
+                [],
+
+            years:
+                []
         };
 
 
@@ -512,9 +607,6 @@
                 .querySelectorAll(
                     'a[href]'
                 );
-
-
-        var i;
 
 
         function add(
@@ -560,14 +652,19 @@
 
 
             result[group]
-                .push({
-                    title:
-                        title,
+                .push(
+                    {
+                        title:
+                            title,
 
-                    path:
-                        path
-                });
+                        path:
+                            path
+                    }
+                );
         }
+
+
+        var i;
 
 
         for (
@@ -600,7 +697,8 @@
             if (
                 path.indexOf(
                     '/zhanr/'
-                ) === 0
+                ) ===
+                0
             ) {
                 add(
                     'genres',
@@ -613,7 +711,8 @@
             else if (
                 path.indexOf(
                     '/god/'
-                ) === 0
+                ) ===
+                0
             ) {
                 add(
                     'years',
@@ -626,7 +725,9 @@
             else if (
                 path.indexOf(
                     '/tip/'
-                ) === 0 &&
+                ) ===
+                    0 &&
+
                 !/\.html(?:\?|$)/i
                     .test(
                         path
@@ -641,31 +742,33 @@
         }
 
 
-        result.years
-            .sort(
-                function (
-                    a,
-                    b
-                ) {
-                    return (
-                        safeInt(
-                            b.title,
-                            0
-                        ) -
-                        safeInt(
-                            a.title,
-                            0
-                        )
-                    );
-                }
-            );
+        result.years.sort(
+            function (
+                a,
+                b
+            ) {
+                return (
+                    safeInt(
+                        b.title,
+                        0
+                    ) -
+
+                    safeInt(
+                        a.title,
+                        0
+                    )
+                );
+            }
+        );
 
 
         return result;
     }
 
 
-    function parsePageNumber(path) {
+    function parsePageNumber(
+        path
+    ) {
         var match =
             toPath(
                 path
@@ -684,8 +787,10 @@
     }
 
 
-    function baseSectionPath(path) {
-        var p =
+    function baseSectionPath(
+        path
+    ) {
+        var cleanPath =
             toPath(
                 path
             )
@@ -700,17 +805,18 @@
 
 
         if (
-            p.charAt(
-                p.length -
+            cleanPath.charAt(
+                cleanPath.length -
                 1
-            ) !== '/'
+            ) !==
+            '/'
         ) {
-            p +=
+            cleanPath +=
                 '/';
         }
 
 
-        return p;
+        return cleanPath;
     }
 
 
@@ -783,10 +889,13 @@
                 );
 
 
-            if (match) {
+            if (
+                match
+            ) {
                 max =
                     Math.max(
                         max,
+
                         safeInt(
                             match[1],
                             current
@@ -806,32 +915,38 @@
             previous:
                 current >
                 1
+
                     ? pagePath(
                         currentPath,
                         current -
                         1
                     )
+
                     : '',
 
             next:
                 max >
                 current
+
                     ? pagePath(
                         currentPath,
                         current +
                         1
                     )
+
                     : ''
         };
     }
 
 
-    function availableFromTitle(title) {
+    function availableFromTitle(
+        title
+    ) {
         var best =
             0;
 
 
-        var re =
+        var expression =
             /\[?\s*1\s*-\s*(\d{1,4})\s*(?:из\s*\d+\+?)?/ig;
 
 
@@ -841,7 +956,7 @@
         while (
             (
                 match =
-                    re.exec(
+                    expression.exec(
                         clean(
                             title
                         )
@@ -851,6 +966,7 @@
             best =
                 Math.max(
                     best,
+
                     safeInt(
                         match[1],
                         0
@@ -874,6 +990,7 @@
                         html ||
                         ''
                     ),
+
                     'text/html'
                 );
 
@@ -951,54 +1068,56 @@
                 );
 
 
-            items.push({
-                title:
-                    title,
+            items.push(
+                {
+                    title:
+                        title,
 
-                href:
-                    href,
+                    href:
+                        href,
 
-                poster:
-                    findPoster(
-                        container,
-                        href
-                    ),
+                    poster:
+                        findPoster(
+                            container,
+                            href
+                        ),
 
-                year:
-                    firstMatch(
-                        text,
-                        /Год выхода:\s*([^Ж]+?)(?=\s+Жанр:|$)/i
-                    ),
+                    year:
+                        firstMatch(
+                            text,
+                            /Год выхода:\s*([^Ж]+?)(?=\s+Жанр:|$)/i
+                        ),
 
-                genre:
-                    firstMatch(
-                        text,
-                        /Жанр:\s*(.+?)(?=\s+Тип:|$)/i
-                    ),
+                    genre:
+                        firstMatch(
+                            text,
+                            /Жанр:\s*(.+?)(?=\s+Тип:|$)/i
+                        ),
 
-                type:
-                    firstMatch(
-                        text,
-                        /Тип:\s*(.+?)(?=\s+Количество серий:|\s+Режисс[её]р:|\s+Рейтинг:|$)/i
-                    ),
+                    type:
+                        firstMatch(
+                            text,
+                            /Тип:\s*(.+?)(?=\s+Количество серий:|\s+Режисс[её]р:|\s+Рейтинг:|$)/i
+                        ),
 
-                episodes:
-                    firstMatch(
-                        text,
-                        /Количество серий:\s*(.+?)(?=\s+Режисс[её]р:|\s+Рейтинг:|\s+Описание:|$)/i
-                    ),
+                    episodes:
+                        firstMatch(
+                            text,
+                            /Количество серий:\s*(.+?)(?=\s+Режисс[её]р:|\s+Рейтинг:|\s+Описание:|$)/i
+                        ),
 
-                description:
-                    firstMatch(
-                        text,
-                        /Описание:\s*(.+?)(?=\s+Смотреть\s|\s+Категории:|$)/i
-                    ),
+                    description:
+                        firstMatch(
+                            text,
+                            /Описание:\s*(.+?)(?=\s+Смотреть\s|\s+Категории:|$)/i
+                        ),
 
-                availableEpisodes:
-                    availableFromTitle(
-                        title
-                    )
-            });
+                    availableEpisodes:
+                        availableFromTitle(
+                            title
+                        )
+                }
+            );
         }
 
 
@@ -1025,6 +1144,7 @@
         episodeText
     ) {
         var max =
+
             fallbackItem &&
             fallbackItem
                 .availableEpisodes
@@ -1038,7 +1158,9 @@
                 : 0;
 
 
-        if (!max) {
+        if (
+            !max
+        ) {
             var range =
                 clean(
                     episodeText ||
@@ -1049,7 +1171,9 @@
                 );
 
 
-            if (range) {
+            if (
+                range
+            ) {
                 max =
                     safeInt(
                         range[1],
@@ -1059,7 +1183,9 @@
         }
 
 
-        if (!max) {
+        if (
+            !max
+        ) {
             var direct =
                 clean(
                     episodeText ||
@@ -1070,7 +1196,9 @@
                 );
 
 
-            if (direct) {
+            if (
+                direct
+            ) {
                 max =
                     safeInt(
                         direct[1],
@@ -1083,6 +1211,7 @@
         max =
             Math.max(
                 0,
+
                 Math.min(
                     500,
                     max
@@ -1102,14 +1231,16 @@
             i <= max;
             i++
         ) {
-            result.push({
-                number:
-                    i,
+            result.push(
+                {
+                    number:
+                        i,
 
-                title:
-                    i +
-                    ' серия'
-            });
+                    title:
+                        i +
+                        ' серия'
+                }
+            );
         }
 
 
@@ -1128,6 +1259,7 @@
                         html ||
                         ''
                     ),
+
                     'text/html'
                 );
 
@@ -1146,12 +1278,15 @@
 
 
         var title =
+
             fallbackItem &&
             fallbackItem.title
+
                 ? clean(
                     fallbackItem
                         .title
                 )
+
                 : '';
 
 
@@ -1168,7 +1303,9 @@
         }
 
 
-        if (!title) {
+        if (
+            !title
+        ) {
             title =
                 clean(
                     doc.title ||
@@ -1178,6 +1315,7 @@
                     /\s*[|—-].*$/,
                     ''
                 ) ||
+
                 'AnimeVost';
         }
 
@@ -1298,13 +1436,16 @@
             href:
                 fallbackItem &&
                 fallbackItem.href
+
                     ? fallbackItem.href
                     : '/',
 
             poster:
                 fallbackItem &&
                 fallbackItem.poster
+
                     ? fallbackItem.poster
+
                     : findPoster(
                         doc.body,
                         '/'
@@ -1343,7 +1484,7 @@
     function injectStyle() {
         if (
             $(
-                '#animevost-v050-style'
+                '#animevost-v051-style'
             ).length
         ) {
             return;
@@ -1352,9 +1493,10 @@
 
         $('head')
             .append(
-                '<style id="animevost-v050-style">' +
 
-                '.av50-viewport{' +
+                '<style id="animevost-v051-style">' +
+
+                '.av51-viewport{' +
                     'height:calc(100vh - 6.2em);' +
                     'overflow-y:auto;' +
                     'overflow-x:hidden;' +
@@ -1362,111 +1504,134 @@
                     '-webkit-overflow-scrolling:touch' +
                 '}' +
 
-                '.av50-viewport::-webkit-scrollbar{' +
+                '.av51-viewport::-webkit-scrollbar{' +
                     'width:0;' +
                     'height:0' +
                 '}' +
 
-                '.av50-page{' +
+                '.av51-page{' +
                     'padding:1.3em 2.2em 5em;' +
                     'box-sizing:border-box' +
                 '}' +
 
-                '.av50-title{' +
+                '.av51-title{' +
                     'font-size:2em;' +
                     'font-weight:600;' +
                     'margin:.2em 0 .75em;' +
                     'line-height:1.15' +
                 '}' +
 
-                '.av50-nav,' +
-                '.av50-grid,' +
-                '.av50-pages,' +
-                '.av50-actions,' +
-                '.av50-episodes{' +
+                '.av51-nav,' +
+                '.av51-grid,' +
+                '.av51-pages,' +
+                '.av51-actions,' +
+                '.av51-episodes{' +
                     'display:flex;' +
                     'flex-wrap:wrap;' +
                     'align-items:flex-start' +
                 '}' +
 
-                '.av50-nav{' +
+                '.av51-nav{' +
                     'margin-bottom:1.2em' +
                 '}' +
 
-                '.av50-navbtn,' +
-                '.av50-pagebtn,' +
-                '.av50-action,' +
-                '.av50-episode{' +
+                '.av51-navbtn,' +
+                '.av51-pagebtn,' +
+                '.av51-action,' +
+                '.av51-episode{' +
+
                     'padding:.7em 1.05em;' +
+
                     'margin:0 .55em .55em 0;' +
+
                     'background:rgba(255,255,255,.10);' +
+
                     'border-radius:.45em;' +
+
                     'font-size:1.05em;' +
+
                     'box-sizing:border-box' +
+
                 '}' +
 
-                '.av50-navbtn.focus,' +
-                '.av50-pagebtn.focus,' +
-                '.av50-action.focus,' +
-                '.av50-episode.focus{' +
+                '.av51-navbtn.focus,' +
+                '.av51-pagebtn.focus,' +
+                '.av51-action.focus,' +
+                '.av51-episode.focus{' +
                     'background:#fff;' +
                     'color:#111' +
                 '}' +
 
-                '.av50-status{' +
+                '.av51-status{' +
                     'padding:1.2em 0;' +
                     'font-size:1.15em;' +
                     'opacity:.8' +
                 '}' +
 
-                '.av50-card{' +
+                '.av51-card{' +
+
                     'width:12.2em;' +
+
                     'margin:0 1.05em 1.3em 0;' +
+
                     'border-radius:.55em;' +
+
                     'padding:.45em;' +
+
                     'background:rgba(255,255,255,.04);' +
+
                     'box-sizing:border-box' +
+
                 '}' +
 
-                '.av50-card.focus{' +
+                '.av51-card.focus{' +
                     'background:rgba(255,255,255,.18);' +
                     'transform:scale(1.025)' +
                 '}' +
 
-                '.av50-poster{' +
+                '.av51-poster{' +
+
                     'width:100%;' +
+
                     'height:17.4em;' +
+
                     'border-radius:.4em;' +
+
                     'overflow:hidden;' +
+
                     'background:rgba(255,255,255,.08);' +
+
                     'display:flex;' +
+
                     'align-items:center;' +
+
                     'justify-content:center' +
+
                 '}' +
 
-                '.av50-poster img,' +
-                '.av50-detail-poster img{' +
+                '.av51-poster img,' +
+                '.av51-detail-poster img{' +
                     'width:100%;' +
                     'height:100%;' +
                     'object-fit:cover;' +
                     'display:block' +
                 '}' +
 
-                '.av50-fallback{' +
+                '.av51-fallback{' +
                     'font-size:1em;' +
                     'opacity:.55;' +
                     'text-align:center;' +
                     'padding:1em' +
                 '}' +
 
-                '.av50-name{' +
+                '.av51-name{' +
                     'font-size:1.03em;' +
                     'line-height:1.25;' +
                     'margin-top:.6em;' +
                     'min-height:2.5em' +
                 '}' +
 
-                '.av50-meta{' +
+                '.av51-meta{' +
                     'font-size:.83em;' +
                     'line-height:1.3;' +
                     'opacity:.62;' +
@@ -1474,138 +1639,205 @@
                     'min-height:2.1em' +
                 '}' +
 
-                '.av50-pages{' +
+                '.av51-pages{' +
                     'margin-top:.4em;' +
                     'padding-bottom:1em' +
                 '}' +
 
-                '.av50-detail-top{' +
+                '.av51-detail-top{' +
                     'display:flex;' +
                     'align-items:flex-start;' +
                     'margin-bottom:1.4em' +
                 '}' +
 
-                '.av50-detail-poster{' +
+                '.av51-detail-poster{' +
+
                     'width:15em;' +
+
                     'min-width:15em;' +
+
                     'height:21em;' +
+
                     'margin-right:2em;' +
+
                     'overflow:hidden;' +
+
                     'border-radius:.55em;' +
+
                     'background:rgba(255,255,255,.08)' +
+
                 '}' +
 
-                '.av50-detail-body{' +
+                '.av51-detail-body{' +
                     'max-width:68em' +
                 '}' +
 
-                '.av50-detail-original{' +
+                '.av51-detail-original{' +
                     'font-size:1.05em;' +
                     'opacity:.65;' +
                     'margin-top:-.45em;' +
                     'margin-bottom:.9em' +
                 '}' +
 
-                '.av50-detail-meta{' +
+                '.av51-detail-meta{' +
                     'font-size:1.04em;' +
                     'line-height:1.55;' +
                     'opacity:.78;' +
                     'margin-bottom:1em' +
                 '}' +
 
-                '.av50-detail-description{' +
+                '.av51-detail-description{' +
                     'font-size:1.05em;' +
                     'line-height:1.55' +
                 '}' +
 
-                '.av50-actions{' +
+                '.av51-actions{' +
                     'margin:1.25em 0 1.3em' +
                 '}' +
 
-                '.av50-action--primary{' +
+                '.av51-action--primary{' +
                     'background:rgba(255,255,255,.18)' +
                 '}' +
 
-                '.av50-section-title{' +
+                '.av51-section-title{' +
                     'font-size:1.45em;' +
                     'font-weight:600;' +
                     'margin:1.2em 0 .75em' +
                 '}' +
 
-                '.av50-episode{' +
+                '.av51-episode{' +
                     'min-width:7.3em;' +
                     'text-align:center' +
                 '}' +
 
-                '.av50-episode.selected{' +
-                    'box-shadow:inset 0 0 0 .16em rgba(255,255,255,.65)' +
+                '.av51-episode.selected{' +
+                    'box-shadow:' +
+                    'inset 0 0 0 .16em rgba(255,255,255,.65)' +
                 '}' +
 
-                '.av50-note{' +
+                '.av51-note{' +
+
                     'margin-top:1.2em;' +
+
                     'padding:1em 1.15em;' +
+
                     'background:rgba(255,255,255,.07);' +
+
                     'border-radius:.45em;' +
+
                     'opacity:.72;' +
+
                     'font-size:.96em;' +
+
                     'line-height:1.45' +
+
                 '}' +
 
-                '.av50-tv{' +
+                '.av51-tv{' +
+
                     'position:fixed;' +
+
                     'left:0;' +
                     'top:0;' +
                     'right:0;' +
                     'bottom:0;' +
+
                     'background:#000;' +
+
                     'z-index:999999;' +
+
                     'display:flex;' +
+
                     'flex-direction:column' +
+
                 '}' +
 
-                '.av50-tvbar{' +
+                '.av51-tvbar{' +
+
                     'height:3.5em;' +
+
                     'min-height:3.5em;' +
+
                     'background:rgba(12,12,12,.98);' +
+
                     'display:flex;' +
+
                     'align-items:center;' +
+
                     'padding:0 1em;' +
+
                     'box-sizing:border-box' +
+
                 '}' +
 
-                '.av50-tvtitle{' +
+                '.av51-tvtitle{' +
+
                     'font-size:1em;' +
+
                     'white-space:nowrap;' +
+
                     'overflow:hidden;' +
+
                     'text-overflow:ellipsis;' +
+
                     'flex:1;' +
+
                     'padding-right:1em' +
+
                 '}' +
 
-                '.av50-tvstatus{' +
+                '.av51-tvstatus{' +
+
                     'font-size:.82em;' +
+
                     'opacity:.7;' +
+
                     'margin-right:1.2em;' +
+
                     'white-space:nowrap' +
+
                 '}' +
 
-                '.av50-tvclose{' +
+                '.av51-tvclose{' +
+
                     'padding:.55em .8em;' +
+
                     'border-radius:.35em;' +
+
                     'background:rgba(255,255,255,.14)' +
+
                 '}' +
 
-                '.av50-tvclose.focus{' +
-                    'background:#fff;' +
-                    'color:#111' +
-                '}' +
+                '.av51-tv iframe{' +
 
-                '.av50-tv iframe{' +
                     'width:100%;' +
+
                     'height:calc(100% - 3.5em);' +
+
                     'border:0;' +
+
                     'background:#000;' +
+
                     'display:block' +
+
+                '}' +
+
+                '.av51-sink{' +
+
+                    'position:absolute!important;' +
+
+                    'left:-9999px!important;' +
+
+                    'top:-9999px!important;' +
+
+                    'width:1px!important;' +
+
+                    'height:1px!important;' +
+
+                    'opacity:0!important;' +
+
+                    'pointer-events:none!important' +
+
                 '}' +
 
                 '</style>'
@@ -1625,8 +1857,10 @@
             );
 
 
-        if (url) {
-            var img =
+        if (
+            url
+        ) {
+            var image =
                 $('<img alt="">')
                     .attr(
                         'src',
@@ -1634,15 +1868,15 @@
                     );
 
 
-            img.on(
+            image.on(
                 'error',
 
                 function () {
                     box
                         .empty()
                         .append(
-                            '<div class="av50-fallback">' +
-                                'AnimeVost' +
+                            '<div class="av51-fallback">' +
+                            'AnimeVost' +
                             '</div>'
                         );
                 }
@@ -1650,15 +1884,15 @@
 
 
             box.append(
-                img
+                image
             );
         }
 
 
         else {
             box.append(
-                '<div class="av50-fallback">' +
-                    'AnimeVost' +
+                '<div class="av51-fallback">' +
+                'AnimeVost' +
                 '</div>'
             );
         }
@@ -1681,50 +1915,56 @@
         }
 
 
-        var vp =
+        var container =
             viewport[0];
 
 
-        var er =
+        var elementRect =
             element
                 .getBoundingClientRect();
 
 
-        var vr =
-            vp
+        var viewportRect =
+            container
                 .getBoundingClientRect();
 
 
         if (
-            er.bottom >
-            vr.bottom -
+            elementRect.bottom >
+            viewportRect.bottom -
             40
         ) {
-            vp.scrollTop +=
-                er.bottom -
+            container.scrollTop +=
+
+                elementRect.bottom -
+
                 (
-                    vr.bottom -
+                    viewportRect.bottom -
                     40
                 );
         }
 
 
         else if (
-            er.top <
-            vr.top +
+            elementRect.top <
+            viewportRect.top +
             22
         ) {
-            vp.scrollTop -=
+            container.scrollTop -=
+
                 (
-                    vr.top +
+                    viewportRect.top +
                     22
                 ) -
-                er.top;
+
+                elementRect.top;
         }
     }
 
 
-    function selectors(root) {
+    function selectorList(
+        root
+    ) {
         var result =
             [];
 
@@ -1738,7 +1978,7 @@
                     if (
                         this &&
                         this.offsetParent !==
-                        null
+                            null
                     ) {
                         result.push(
                             this
@@ -1752,7 +1992,9 @@
     }
 
 
-    function rows(elements) {
+    function groupRows(
+        elements
+    ) {
         var result =
             [];
 
@@ -1769,12 +2011,12 @@
             i < elements.length;
             i++
         ) {
-            var el =
+            var element =
                 elements[i];
 
 
             var top =
-                el
+                element
                     .getBoundingClientRect()
                     .top;
 
@@ -1807,7 +2049,9 @@
             }
 
 
-            if (!row) {
+            if (
+                !row
+            ) {
                 row = {
                     top:
                         top,
@@ -1824,7 +2068,7 @@
 
 
             row.items.push(
-                el
+                element
             );
         }
 
@@ -1858,6 +2102,7 @@
                             a
                                 .getBoundingClientRect()
                                 .left -
+
                             b
                                 .getBoundingClientRect()
                                 .left
@@ -1883,19 +2128,21 @@
         }
 
 
-        if (!current) {
+        if (
+            !current
+        ) {
             return items[0];
         }
 
 
-        var cr =
+        var currentRect =
             current
                 .getBoundingClientRect();
 
 
-        var cx =
-            cr.left +
-            cr.width /
+        var currentCenter =
+            currentRect.left +
+            currentRect.width /
             2;
 
 
@@ -1915,19 +2162,21 @@
             i < items.length;
             i++
         ) {
-            var r =
+            var rect =
                 items[i]
                     .getBoundingClientRect();
 
 
             var d =
                 Math.abs(
+
                     (
-                        r.left +
-                        r.width /
+                        rect.left +
+                        rect.width /
                         2
                     ) -
-                    cx
+
+                    currentCenter
                 );
 
 
@@ -1978,13 +2227,15 @@
                     )[0];
 
 
-            if (focused) {
+            if (
+                focused
+            ) {
                 return focused;
             }
 
 
             var list =
-                selectors(
+                selectorList(
                     root
                 );
 
@@ -1995,20 +2246,24 @@
         }
 
 
-        function focus(el) {
-            if (!el) {
+        function focus(
+            element
+        ) {
+            if (
+                !element
+            ) {
                 return false;
             }
 
 
             last =
-                el;
+                element;
 
 
             try {
                 Lampa.Controller
                     .collectionFocus(
-                        el,
+                        element,
                         viewport
                     );
             }
@@ -2018,7 +2273,7 @@
                 try {
                     Lampa.Controller
                         .focus(
-                            el
+                            element
                         );
                 }
 
@@ -2028,7 +2283,7 @@
 
             ensureVisible(
                 viewport,
-                el
+                element
             );
 
 
@@ -2036,9 +2291,11 @@
         }
 
 
-        function move(direction) {
+        function move(
+            direction
+        ) {
             var list =
-                selectors(
+                selectorList(
                     root
                 );
 
@@ -2056,7 +2313,7 @@
 
 
             var grouped =
-                rows(
+                groupRows(
                     list
                 );
 
@@ -2065,7 +2322,7 @@
                 -1;
 
 
-            var colIndex =
+            var columnIndex =
                 -1;
 
 
@@ -2094,7 +2351,7 @@
                         rowIndex =
                             r;
 
-                        colIndex =
+                        columnIndex =
                             c;
 
                         break;
@@ -2126,7 +2383,7 @@
                 'left'
             ) {
                 if (
-                    colIndex >
+                    columnIndex >
                     0
                 ) {
                     return focus(
@@ -2134,7 +2391,7 @@
                             rowIndex
                         ]
                         .items[
-                            colIndex -
+                            columnIndex -
                             1
                         ]
                     );
@@ -2158,7 +2415,7 @@
                 'right'
             ) {
                 if (
-                    colIndex <
+                    columnIndex <
                     grouped[
                         rowIndex
                     ]
@@ -2171,7 +2428,7 @@
                             rowIndex
                         ]
                         .items[
-                            colIndex +
+                            columnIndex +
                             1
                         ]
                     );
@@ -2197,6 +2454,7 @@
                                 1
                             ]
                             .items,
+
                             cur
                         )
                     );
@@ -2231,6 +2489,7 @@
                                 1
                             ]
                             .items,
+
                             cur
                         )
                     );
@@ -2290,7 +2549,18 @@
     }
 
 
-    function sendTvKey(key) {
+    /*
+     * TV mode.
+     *
+     * IMPORTANT:
+     *
+     * The iframe NEVER receives
+     * real LG keyboard focus.
+     */
+
+    function sendTvKey(
+        key
+    ) {
         if (
             !tvSession ||
             !tvSession.frame ||
@@ -2305,9 +2575,10 @@
                 .frame[0]
                 .contentWindow
                 .postMessage(
+
                     {
                         source:
-                            'animevost-tv-host',
+                            'animevost-tv-host-v051',
 
                         type:
                             'key',
@@ -2315,36 +2586,7 @@
                         key:
                             key
                     },
-                    '*'
-                );
-        }
 
-        catch (e) {}
-    }
-
-
-    function sendTvBack() {
-        if (
-            !tvSession ||
-            !tvSession.frame ||
-            !tvSession.frame[0]
-        ) {
-            return;
-        }
-
-
-        try {
-            tvSession
-                .frame[0]
-                .contentWindow
-                .postMessage(
-                    {
-                        source:
-                            'animevost-tv-host',
-
-                        type:
-                            'back'
-                    },
                     '*'
                 );
         }
@@ -2354,7 +2596,9 @@
 
 
     function closeTvPlayer() {
-        if (!tvSession) {
+        if (
+            !tvSession
+        ) {
             return;
         }
 
@@ -2368,22 +2612,28 @@
 
 
         try {
-            window.removeEventListener(
-                'message',
-                session.messageHandler,
-                false
-            );
+            window
+                .removeEventListener(
+                    'message',
+                    session
+                        .messageHandler,
+                    false
+                );
         }
+
         catch (e) {}
 
 
         try {
-            window.removeEventListener(
-                'keydown',
-                session.mediaHandler,
-                true
-            );
+            window
+                .removeEventListener(
+                    'keydown',
+                    session
+                        .mediaHandler,
+                    true
+                );
         }
+
         catch (e2) {}
 
 
@@ -2392,8 +2642,17 @@
                 .overlay
                 .remove();
         }
+
         catch (e3) {}
 
+
+        /*
+         * This is deliberately
+         * unconditional.
+         *
+         * Back MUST always get
+         * the user out of TV mode.
+         */
 
         try {
             Lampa.Controller
@@ -2401,6 +2660,7 @@
                     'content'
                 );
         }
+
         catch (e4) {}
     }
 
@@ -2415,32 +2675,36 @@
 
         var overlay =
             $(
-                '<div class="av50-tv"></div>'
+                '<div class="av51-tv"></div>'
             );
 
 
         var bar =
             $(
-                '<div class="av50-tvbar"></div>'
+                '<div class="av51-tvbar"></div>'
             );
 
 
         var title =
             $(
-                '<div class="av50-tvtitle"></div>'
+                '<div class="av51-tvtitle"></div>'
             )
             .text(
+
                 (
                     item.title ||
                     'AnimeVost'
                 ) +
+
                 (
                     episode
                         ? ' • ' +
                           episode +
                           ' серия'
+
                         : ''
                 ) +
+
                 ' • Плеер №' +
                 player
             );
@@ -2448,26 +2712,51 @@
 
         var status =
             $(
-                '<div class="av50-tvstatus">' +
-                    'Загрузка TV-режима...' +
+                '<div class="av51-tvstatus">' +
+                'Загрузка TV-режима...' +
                 '</div>'
             );
 
 
-        var close =
+        var closeLabel =
             $(
-                '<div class="av50-tvclose selector">' +
-                    '✕ Закрыть' +
+                '<div class="av51-tvclose">' +
+                'Back — закрыть' +
                 '</div>'
             );
 
+
+        /*
+         * Invisible Lampa focus target.
+         *
+         * Lampa always keeps its
+         * controller here.
+         */
+
+        var sink =
+            $(
+                '<div ' +
+                    'class="av51-sink selector" ' +
+                    'tabindex="0">' +
+                '</div>'
+            );
+
+
+        /*
+         * No selector class,
+         * tabindex = -1.
+         *
+         * The iframe itself must not
+         * receive LG remote focus.
+         */
 
         var frame =
             $(
                 '<iframe ' +
-                    'class="selector" ' +
-                    'tabindex="0" ' +
-                    'allow="autoplay; fullscreen; picture-in-picture" ' +
+                    'tabindex="-1" ' +
+                    'allow="' +
+                        'autoplay; fullscreen; picture-in-picture' +
+                    '" ' +
                     'allowfullscreen>' +
                 '</iframe>'
             );
@@ -2475,6 +2764,7 @@
 
         frame.attr(
             'src',
+
             tvUrl(
                 item.href,
                 episode,
@@ -2491,7 +2781,10 @@
                 status
             )
             .append(
-                close
+                closeLabel
+            )
+            .append(
+                sink
             );
 
 
@@ -2511,17 +2804,18 @@
 
 
         var session = {
+
             overlay:
                 overlay,
 
             frame:
                 frame,
 
+            sink:
+                sink,
+
             status:
                 status,
-
-            playerMode:
-                false,
 
             messageHandler:
                 null,
@@ -2535,28 +2829,10 @@
             session;
 
 
-        function updateStatus() {
-            if (
-                !tvSession ||
-                tvSession !==
-                session
-            ) {
-                return;
-            }
-
-
-            session
-                .status
-                .text(
-                    session.playerMode
-                        ? 'Плеер: OK пауза • ←/→ 10 сек • ↑/↓ громкость • Back назад'
-                        : 'Стрелки — выбор • OK — нажать • Back — закрыть'
-                );
-        }
-
-
         session.messageHandler =
-            function (event) {
+            function (
+                event
+            ) {
                 var data =
                     event.data ||
                     {};
@@ -2564,7 +2840,7 @@
 
                 if (
                     data.source !==
-                    'animevost-tv'
+                    'animevost-tv-v051'
                 ) {
                     return;
                 }
@@ -2575,28 +2851,8 @@
                     'ready'
                 ) {
                     status.text(
-                        'TV-режим готов • стрелки/OK управляют страницей'
+                        'TV-режим готов • стрелки/OK управляют страницей • Back закрывает'
                     );
-                }
-
-
-                else if (
-                    data.type ===
-                    'player-mode'
-                ) {
-                    session.playerMode =
-                        !!data.active;
-
-
-                    updateStatus();
-                }
-
-
-                else if (
-                    data.type ===
-                    'request-close'
-                ) {
-                    closeTvPlayer();
                 }
             };
 
@@ -2608,8 +2864,23 @@
         );
 
 
+        /*
+         * Physical Play/Pause/
+         * rewind/forward keys.
+         */
+
         session.mediaHandler =
-            function (event) {
+            function (
+                event
+            ) {
+                if (
+                    tvSession !==
+                    session
+                ) {
+                    return;
+                }
+
+
                 var code =
                     event.keyCode ||
                     event.which;
@@ -2620,7 +2891,8 @@
 
 
                 if (
-                    code === 415
+                    code ===
+                    415
                 ) {
                     key =
                         'play';
@@ -2628,7 +2900,8 @@
 
 
                 else if (
-                    code === 19
+                    code ===
+                    19
                 ) {
                     key =
                         'pause';
@@ -2636,7 +2909,8 @@
 
 
                 else if (
-                    code === 179
+                    code ===
+                    179
                 ) {
                     key =
                         'playpause';
@@ -2644,7 +2918,8 @@
 
 
                 else if (
-                    code === 412
+                    code ===
+                    412
                 ) {
                     key =
                         'rewind';
@@ -2652,7 +2927,8 @@
 
 
                 else if (
-                    code === 417
+                    code ===
+                    417
                 ) {
                     key =
                         'forward';
@@ -2660,9 +2936,7 @@
 
 
                 if (
-                    key &&
-                    tvSession ===
-                    session
+                    key
                 ) {
                     sendTvKey(
                         key
@@ -2670,9 +2944,13 @@
 
 
                     try {
-                        event.preventDefault();
-                        event.stopPropagation();
+                        event
+                            .preventDefault();
+
+                        event
+                            .stopPropagation();
                     }
+
                     catch (e) {}
                 }
             };
@@ -2685,22 +2963,12 @@
         );
 
 
-        close.on(
-            'hover:enter click',
-            closeTvPlayer
-        );
-
-
-        frame.on(
-            'hover:enter',
-
-            function () {
-                sendTvKey(
-                    'enter'
-                );
-            }
-        );
-
+        /*
+         * Explicit Lampa remote
+         * controller.
+         *
+         * THIS fixes OK.
+         */
 
         Lampa.Controller.add(
             TV_CONTROLLER,
@@ -2716,7 +2984,7 @@
 
                         Lampa.Controller
                             .collectionFocus(
-                                frame[0],
+                                sink[0],
                                 overlay
                             );
                     },
@@ -2754,25 +3022,24 @@
                     },
 
 
+                ok:
+                    function () {
+                        sendTvKey(
+                            'enter'
+                        );
+                    },
+
+
+                /*
+                 * Back no longer enters
+                 * the AnimeVost iframe.
+                 *
+                 * It ALWAYS closes.
+                 */
+
                 back:
                     function () {
-                        if (
-                            session.playerMode
-                        ) {
-                            sendTvBack();
-
-
-                            session.playerMode =
-                                false;
-
-
-                            updateStatus();
-                        }
-
-
-                        else {
-                            closeTvPlayer();
-                        }
+                        closeTvPlayer();
                     }
             }
         );
@@ -2795,14 +3062,17 @@
 
 
                 try {
-                    frame[0]
-                        .focus();
+                    Lampa.Controller
+                        .collectionFocus(
+                            sink[0],
+                            overlay
+                        );
                 }
 
                 catch (e) {}
             },
 
-            150
+            120
         );
     }
 
@@ -2811,49 +3081,55 @@
         path,
         title
     ) {
-        Lampa.Activity.push({
-            url:
-                '',
+        Lampa.Activity.push(
+            {
+                url:
+                    '',
 
-            title:
-                title ||
-                'AnimeVost',
+                title:
+                    title ||
+                    'AnimeVost',
 
-            component:
-                CATALOG,
+                component:
+                    CATALOG,
 
-            av_path:
-                path ||
-                '/',
+                av_path:
+                    path ||
+                    '/',
 
-            av_title:
-                title ||
-                'AnimeVost',
+                av_title:
+                    title ||
+                    'AnimeVost',
 
-            page:
-                1
-        });
+                page:
+                    1
+            }
+        );
     }
 
 
-    function openDetail(item) {
-        Lampa.Activity.push({
-            url:
-                '',
+    function openDetail(
+        item
+    ) {
+        Lampa.Activity.push(
+            {
+                url:
+                    '',
 
-            title:
-                item.title ||
-                'AnimeVost',
+                title:
+                    item.title ||
+                    'AnimeVost',
 
-            component:
-                DETAIL,
+                component:
+                    DETAIL,
 
-            av_item:
-                item,
+                av_item:
+                    item,
 
-            page:
-                1
-        });
+                page:
+                    1
+            }
+        );
     }
 
 
@@ -2873,43 +3149,51 @@
         }
 
 
-        Lampa.Select.show({
-            title:
-                title,
+        Lampa.Select.show(
+            {
+                title:
+                    title,
 
-            items:
-                list.map(
-                    function (item) {
-                        return {
-                            title:
-                                item.title,
+                items:
+                    list.map(
+                        function (
+                            item
+                        ) {
+                            return {
+                                title:
+                                    item.title,
 
-                            av_path:
-                                item.path
-                        };
-                    }
-                ),
+                                av_path:
+                                    item.path
+                            };
+                        }
+                    ),
 
-            onSelect:
-                function (item) {
-                    openCatalog(
-                        item.av_path,
-                        item.title
-                    );
-                },
-
-            onBack:
-                function () {
-                    Lampa.Controller
-                        .toggle(
-                            'content'
+                onSelect:
+                    function (
+                        item
+                    ) {
+                        openCatalog(
+                            item.av_path,
+                            item.title
                         );
-                }
-        });
+                    },
+
+                onBack:
+                    function () {
+                        Lampa.Controller
+                            .toggle(
+                                'content'
+                            );
+                    }
+            }
+        );
     }
 
 
-    function CatalogComponent(object) {
+    function CatalogComponent(
+        object
+    ) {
         var network =
             new Lampa.Reguest();
 
@@ -2920,20 +3204,25 @@
 
         var viewport =
             $(
-                '<div class="av50-viewport"></div>'
+                '<div class="av51-viewport"></div>'
             );
 
 
         var root =
             $(
-                '<div class="av50-page"></div>'
+                '<div class="av51-page"></div>'
             );
 
 
         var menu = {
-            genres: [],
-            types: [],
-            years: []
+            genres:
+                [],
+
+            types:
+                [],
+
+            years:
+                []
         };
 
 
@@ -2954,10 +3243,10 @@
         var nav;
 
 
-        function topNavigation() {
+        function addTopNavigation() {
             var bar =
                 $(
-                    '<div class="av50-nav"></div>'
+                    '<div class="av51-nav"></div>'
                 );
 
 
@@ -2967,7 +3256,9 @@
             ) {
                 var button =
                     $(
-                        '<div class="av50-navbtn selector"></div>'
+                        '<div class="' +
+                        'av51-navbtn selector' +
+                        '"></div>'
                     )
                     .text(
                         label
@@ -3064,27 +3355,29 @@
         }
 
 
-        function card(
+        function addCard(
             grid,
             item
         ) {
-            var el =
+            var card =
                 $(
-                    '<div class="av50-card selector"></div>'
+                    '<div class="' +
+                    'av51-card selector' +
+                    '"></div>'
                 );
 
 
-            el.append(
+            card.append(
                 posterBox(
-                    'av50-poster',
+                    'av51-poster',
                     item.poster
                 )
             );
 
 
-            el.append(
+            card.append(
                 $(
-                    '<div class="av50-name"></div>'
+                    '<div class="av51-name"></div>'
                 )
                 .text(
                     item.title
@@ -3127,9 +3420,9 @@
             }
 
 
-            el.append(
+            card.append(
                 $(
-                    '<div class="av50-meta"></div>'
+                    '<div class="av51-meta"></div>'
                 )
                 .text(
                     meta.join(
@@ -3139,7 +3432,7 @@
             );
 
 
-            el.on(
+            card.on(
                 'hover:enter',
 
                 function () {
@@ -3151,12 +3444,14 @@
 
 
             grid.append(
-                el
+                card
             );
         }
 
 
-        function paging(data) {
+        function addPaging(
+            data
+        ) {
             if (
                 !data ||
                 (
@@ -3170,7 +3465,7 @@
 
             var bar =
                 $(
-                    '<div class="av50-pages"></div>'
+                    '<div class="av51-pages"></div>'
                 );
 
 
@@ -3179,7 +3474,9 @@
             ) {
                 var previous =
                     $(
-                        '<div class="av50-pagebtn selector"></div>'
+                        '<div class="' +
+                        'av51-pagebtn selector' +
+                        '"></div>'
                     )
                     .text(
                         '← Страница ' +
@@ -3210,16 +3507,19 @@
 
             bar.append(
                 $(
-                    '<div class="av50-pagebtn"></div>'
+                    '<div class="av51-pagebtn"></div>'
                 )
                 .text(
                     'Страница ' +
                     data.current +
+
                     (
                         data.max >
                         1
+
                             ? ' / ' +
                               data.max
+
                             : ''
                     )
                 )
@@ -3231,7 +3531,9 @@
             ) {
                 var next =
                     $(
-                        '<div class="av50-pagebtn selector"></div>'
+                        '<div class="' +
+                        'av51-pagebtn selector' +
+                        '"></div>'
                     )
                     .text(
                         'Страница ' +
@@ -3267,8 +3569,12 @@
         }
 
 
-        function renderError(message) {
-            if (!alive) {
+        function renderError(
+            message
+        ) {
+            if (
+                !alive
+            ) {
                 return;
             }
 
@@ -3278,7 +3584,7 @@
 
             root.append(
                 $(
-                    '<div class="av50-title"></div>'
+                    '<div class="av51-title"></div>'
                 )
                 .text(
                     title
@@ -3288,7 +3594,7 @@
 
             root.append(
                 $(
-                    '<div class="av50-status"></div>'
+                    '<div class="av51-status"></div>'
                 )
                 .text(
                     message
@@ -3303,8 +3609,12 @@
         }
 
 
-        function render(data) {
-            if (!alive) {
+        function render(
+            data
+        ) {
+            if (
+                !alive
+            ) {
                 return;
             }
 
@@ -3324,7 +3634,7 @@
 
             root.append(
                 $(
-                    '<div class="av50-title"></div>'
+                    '<div class="av51-title"></div>'
                 )
                 .text(
                     title
@@ -3332,7 +3642,7 @@
             );
 
 
-            topNavigation();
+            addTopNavigation();
 
 
             if (
@@ -3340,8 +3650,8 @@
                 !data.items.length
             ) {
                 root.append(
-                    '<div class="av50-status">' +
-                        'Карточки аниме на этой странице не найдены.' +
+                    '<div class="av51-status">' +
+                    'Карточки аниме на этой странице не найдены.' +
                     '</div>'
                 );
             }
@@ -3350,14 +3660,16 @@
             else {
                 var grid =
                     $(
-                        '<div class="av50-grid"></div>'
+                        '<div class="av51-grid"></div>'
                     );
 
 
                 data.items
                     .forEach(
-                        function (item) {
-                            card(
+                        function (
+                            item
+                        ) {
+                            addCard(
                                 grid,
                                 item
                             );
@@ -3371,7 +3683,7 @@
             }
 
 
-            paging(
+            addPaging(
                 data.paging
             );
 
@@ -3387,13 +3699,15 @@
 
             setTimeout(
                 function () {
-                    if (!alive) {
+                    if (
+                        !alive
+                    ) {
                         return;
                     }
 
 
                     var list =
-                        selectors(
+                        selectorList(
                             root
                         );
 
@@ -3425,7 +3739,7 @@
 
                 root.append(
                     $(
-                        '<div class="av50-title"></div>'
+                        '<div class="av51-title"></div>'
                     )
                     .text(
                         title
@@ -3434,8 +3748,8 @@
 
 
                 root.append(
-                    '<div class="av50-status">' +
-                        'Загрузка AnimeVost...' +
+                    '<div class="av51-status">' +
+                    'Загрузка AnimeVost...' +
                     '</div>'
                 );
 
@@ -3448,7 +3762,9 @@
 
                 nav =
                     navigation(
+
                         root,
+
                         viewport,
 
                         function () {
@@ -3473,12 +3789,17 @@
 
 
                 network.silent(
+
                     workerUrl(
                         path
                     ),
 
-                    function (html) {
-                        if (!alive) {
+                    function (
+                        html
+                    ) {
+                        if (
+                            !alive
+                        ) {
                             return;
                         }
 
@@ -3490,6 +3811,7 @@
                                         html ||
                                         ''
                                     ),
+
                                     path
                                 )
                             );
@@ -3504,10 +3826,13 @@
 
 
                             renderError(
+
                                 'Ошибка разбора AnimeVost: ' +
+
                                 (
                                     error &&
                                     error.message
+
                                         ? error.message
                                         : error
                                 )
@@ -3515,8 +3840,12 @@
                         }
                     },
 
-                    function (error) {
-                        if (!alive) {
+                    function (
+                        error
+                    ) {
+                        if (
+                            !alive
+                        ) {
                             return;
                         }
 
@@ -3529,6 +3858,7 @@
                             code =
                                 error.status;
                         }
+
                         catch (e) {}
 
 
@@ -3579,6 +3909,7 @@
                                     .collectionFocus(
                                         nav.getLast() ||
                                         false,
+
                                         viewport
                                     );
 
@@ -3673,7 +4004,9 @@
     }
 
 
-    function DetailComponent(object) {
+    function DetailComponent(
+        object
+    ) {
         var network =
             new Lampa.Reguest();
 
@@ -3684,13 +4017,13 @@
 
         var viewport =
             $(
-                '<div class="av50-viewport"></div>'
+                '<div class="av51-viewport"></div>'
             );
 
 
         var root =
             $(
-                '<div class="av50-page"></div>'
+                '<div class="av51-page"></div>'
             );
 
 
@@ -3713,34 +4046,42 @@
         function updateSelection() {
             root
                 .find(
-                    '.av50-episode'
+                    '.av51-episode'
                 )
                 .each(
                     function () {
-                        var el =
+                        var element =
                             $(
                                 this
                             );
 
 
-                        el.toggleClass(
-                            'selected',
+                        element
+                            .toggleClass(
 
-                            safeInt(
-                                el.attr(
-                                    'data-episode'
-                                ),
-                                0
-                            ) ===
-                            selectedEpisode
-                        );
+                                'selected',
+
+                                safeInt(
+                                    element
+                                        .attr(
+                                            'data-episode'
+                                        ),
+
+                                    0
+                                ) ===
+                                selectedEpisode
+                            );
                     }
                 );
         }
 
 
-        function renderError(message) {
-            if (!alive) {
+        function renderError(
+            message
+        ) {
+            if (
+                !alive
+            ) {
                 return;
             }
 
@@ -3750,7 +4091,7 @@
 
             root.append(
                 $(
-                    '<div class="av50-title"></div>'
+                    '<div class="av51-title"></div>'
                 )
                 .text(
                     item.title ||
@@ -3761,7 +4102,7 @@
 
             root.append(
                 $(
-                    '<div class="av50-status"></div>'
+                    '<div class="av51-status"></div>'
                 )
                 .text(
                     message
@@ -3779,8 +4120,12 @@
         }
 
 
-        function render(data) {
-            if (!alive) {
+        function render(
+            data
+        ) {
+            if (
+                !alive
+            ) {
                 return;
             }
 
@@ -3795,13 +4140,13 @@
 
             var top =
                 $(
-                    '<div class="av50-detail-top"></div>'
+                    '<div class="av51-detail-top"></div>'
                 );
 
 
             top.append(
                 posterBox(
-                    'av50-detail-poster',
+                    'av51-detail-poster',
                     data.poster
                 )
             );
@@ -3809,13 +4154,13 @@
 
             var body =
                 $(
-                    '<div class="av50-detail-body"></div>'
+                    '<div class="av51-detail-body"></div>'
                 );
 
 
             body.append(
                 $(
-                    '<div class="av50-title"></div>'
+                    '<div class="av51-title"></div>'
                 )
                 .text(
                     data.title ||
@@ -3830,7 +4175,7 @@
             ) {
                 body.append(
                     $(
-                        '<div class="av50-detail-original"></div>'
+                        '<div class="av51-detail-original"></div>'
                     )
                     .text(
                         data.originalTitle
@@ -3905,7 +4250,7 @@
 
             body.append(
                 $(
-                    '<div class="av50-detail-meta"></div>'
+                    '<div class="av51-detail-meta"></div>'
                 )
                 .text(
                     meta.join(
@@ -3917,7 +4262,7 @@
 
             body.append(
                 $(
-                    '<div class="av50-detail-description"></div>'
+                    '<div class="av51-detail-description"></div>'
                 )
                 .text(
                     data.description ||
@@ -3928,22 +4273,30 @@
 
             var actions =
                 $(
-                    '<div class="av50-actions"></div>'
+                    '<div class="av51-actions"></div>'
                 );
 
 
             var player1 =
                 $(
-                    '<div class="av50-action av50-action--primary selector">' +
-                        '▶ Смотреть • Плеер №1' +
+                    '<div class="' +
+                    'av51-action ' +
+                    'av51-action--primary ' +
+                    'selector">' +
+
+                    '▶ Смотреть • Плеер №1' +
+
                     '</div>'
                 );
 
 
             var player2 =
                 $(
-                    '<div class="av50-action selector">' +
-                        '▶ Смотреть • Плеер №2' +
+                    '<div class="' +
+                    'av51-action selector">' +
+
+                    '▶ Смотреть • Плеер №2' +
+
                     '</div>'
                 );
 
@@ -3999,8 +4352,8 @@
 
 
             root.append(
-                '<div class="av50-section-title">' +
-                    'Серии' +
+                '<div class="av51-section-title">' +
+                'Серии' +
                 '</div>'
             );
 
@@ -4011,16 +4364,20 @@
             ) {
                 var grid =
                     $(
-                        '<div class="av50-episodes"></div>'
+                        '<div class="av51-episodes"></div>'
                     );
 
 
                 data.episodes
                     .forEach(
-                        function (episode) {
+                        function (
+                            episode
+                        ) {
                             var button =
                                 $(
-                                    '<div class="av50-episode selector"></div>'
+                                    '<div class="' +
+                                    'av51-episode selector' +
+                                    '"></div>'
                                 )
                                 .attr(
                                     'data-episode',
@@ -4028,6 +4385,7 @@
                                 )
                                 .text(
                                     episode.title ||
+
                                     (
                                         episode.number +
                                         ' серия'
@@ -4069,26 +4427,25 @@
 
             else {
                 root.append(
-                    '<div class="av50-status">' +
-                        'Список доступных серий не найден.' +
+                    '<div class="av51-status">' +
+                    'Список доступных серий не найден.' +
                     '</div>'
                 );
             }
 
 
             root.append(
-                '<div class="av50-note">' +
 
-                'V0.5 использует TV-режим страницы AnimeVost. ' +
-                'Выберите доступную серию, затем Плеер №1 или №2. ' +
+                '<div class="av51-note">' +
 
-                'На странице AnimeVost стрелки и OK передаются через плагин; ' +
-                'когда фокус войдёт в видеоплеер, OK переключает паузу, ' +
-                '←/→ перематывают примерно на 10 секунд, ' +
-                '↑/↓ меняют громкость. ' +
+                'V0.5.1: TV-страница больше не получает ' +
+                'фокус клавиатуры. ' +
 
-                'Back сначала выходит из режима плеера, ' +
-                'затем закрывает TV-страницу.' +
+                'Lampa остаётся владельцем пульта и передаёт ' +
+                'стрелки и OK странице AnimeVost. ' +
+
+                'Back всегда закрывает TV-режим ' +
+                'и возвращает сюда.' +
 
                 '</div>'
             );
@@ -4105,13 +4462,15 @@
 
             setTimeout(
                 function () {
-                    if (!alive) {
+                    if (
+                        !alive
+                    ) {
                         return;
                     }
 
 
                     var list =
-                        selectors(
+                        selectorList(
                             root
                         );
 
@@ -4143,7 +4502,7 @@
 
                 root.append(
                     $(
-                        '<div class="av50-title"></div>'
+                        '<div class="av51-title"></div>'
                     )
                     .text(
                         item.title ||
@@ -4153,8 +4512,8 @@
 
 
                 root.append(
-                    '<div class="av50-status">' +
-                        'Загрузка страницы аниме...' +
+                    '<div class="av51-status">' +
+                    'Загрузка страницы аниме...' +
                     '</div>'
                 );
 
@@ -4167,7 +4526,9 @@
 
                 nav =
                     navigation(
+
                         root,
+
                         viewport,
 
                         function () {
@@ -4194,10 +4555,14 @@
 
 
                 if (
-                    DETAIL_CACHE[key]
+                    DETAIL_CACHE[
+                        key
+                    ]
                 ) {
                     render(
-                        DETAIL_CACHE[key]
+                        DETAIL_CACHE[
+                            key
+                        ]
                     );
 
 
@@ -4211,12 +4576,17 @@
 
 
                 network.silent(
+
                     workerUrl(
                         key
                     ),
 
-                    function (html) {
-                        if (!alive) {
+                    function (
+                        html
+                    ) {
+                        if (
+                            !alive
+                        ) {
                             return;
                         }
 
@@ -4224,15 +4594,19 @@
                         try {
                             var data =
                                 parseDetail(
+
                                     String(
                                         html ||
                                         ''
                                     ),
+
                                     item
                                 );
 
 
-                            DETAIL_CACHE[key] =
+                            DETAIL_CACHE[
+                                key
+                            ] =
                                 data;
 
 
@@ -4250,10 +4624,13 @@
 
 
                             renderError(
+
                                 'Ошибка разбора страницы аниме: ' +
+
                                 (
                                     error &&
                                     error.message
+
                                         ? error.message
                                         : error
                                 )
@@ -4261,8 +4638,12 @@
                         }
                     },
 
-                    function (error) {
-                        if (!alive) {
+                    function (
+                        error
+                    ) {
+                        if (
+                            !alive
+                        ) {
                             return;
                         }
 
@@ -4275,6 +4656,7 @@
                             code =
                                 error.status;
                         }
+
                         catch (e) {}
 
 
@@ -4325,6 +4707,7 @@
                                     .collectionFocus(
                                         nav.getLast() ||
                                         false,
+
                                         viewport
                                     );
 
@@ -4437,7 +4820,9 @@
 
         var button =
             $(
-                '<li class="menu__item selector" ' +
+
+                '<li ' +
+                    'class="menu__item selector" ' +
                     'data-action="' +
                     NS +
                     '">' +
@@ -4482,7 +4867,9 @@
 
 
         $('.menu .menu__list')
-            .eq(0)
+            .eq(
+                0
+            )
             .append(
                 button
             );
@@ -4491,13 +4878,17 @@
 
     function init() {
         if (
-            window[FLAG]
+            window[
+                FLAG
+            ]
         ) {
             return;
         }
 
 
-        window[FLAG] =
+        window[
+            FLAG
+        ] =
             true;
 
 
@@ -4521,20 +4912,20 @@
 
 
             notify(
-                'AnimeVost V0.5 загружен'
+                'AnimeVost V0.5.1 загружен'
             );
         }
 
 
         catch (error) {
             console.log(
-                'AnimeVost V0.5 init error',
+                'AnimeVost V0.5.1 init error',
                 error
             );
 
 
             notify(
-                'Ошибка запуска AnimeVost V0.5'
+                'Ошибка запуска AnimeVost V0.5.1'
             );
         }
     }
@@ -4549,9 +4940,12 @@
 
     else {
         Lampa.Listener.follow(
+
             'app',
 
-            function (event) {
+            function (
+                event
+            ) {
                 if (
                     event &&
                     event.type ===
