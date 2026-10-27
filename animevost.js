@@ -1,21 +1,33 @@
 (function () {
     'use strict';
 
-    var NS = 'animevost_v040';
+    var NS = 'animevost_v041';
     var FLAG = NS + '_ready';
     var COMPONENT_CATALOG = NS + '_catalog';
     var COMPONENT_DETAIL = NS + '_detail';
+    var PLAYER_CONTROLLER = NS + '_player';
 
-    var WORKER = 'https://animevost-lampa.kalewse69.workers.dev/';
-    var ORIGIN = 'https://animevost.org';
+    var WORKER =
+        'https://animevost-lampa.kalewse69.workers.dev/';
+
+    var ORIGIN =
+        'https://animevost.org';
 
     var DETAIL_CACHE = {};
+    var currentPlayerOverlay = null;
+
+
+    /* ============================================================
+       BASIC HELPERS
+       ============================================================ */
 
     function notify(text) {
         try {
             Lampa.Noty.show(text);
-        } catch (e) {}
+        }
+        catch (e) {}
     }
+
 
     function clean(text) {
         return String(text || '')
@@ -24,62 +36,170 @@
             .replace(/^\s+|\s+$/g, '');
     }
 
+
     function clamp(value, min, max) {
-        return Math.max(min, Math.min(max, value));
+        return Math.max(
+            min,
+            Math.min(
+                max,
+                value
+            )
+        );
     }
+
+
+    function safeInt(
+        value,
+        fallback
+    ) {
+        var number =
+            parseInt(
+                value,
+                10
+            );
+
+        return isNaN(number)
+            ? fallback
+            : number;
+    }
+
+
+    function decodeEntities(text) {
+        var area =
+            document.createElement(
+                'textarea'
+            );
+
+        area.innerHTML =
+            String(
+                text || ''
+            );
+
+        return area.value;
+    }
+
 
     function absoluteUrl(value) {
-        value = clean(value);
+        value =
+            clean(
+                decodeEntities(
+                    value
+                )
+            )
+            .replace(
+                /\\\//g,
+                '/'
+            );
 
-        if (!value) return '';
-        if (/^https?:\/\//i.test(value)) return value;
-        if (value.indexOf('//') === 0) return 'https:' + value;
-        if (value.charAt(0) !== '/') value = '/' + value;
+        if (!value) {
+            return '';
+        }
 
-        return ORIGIN + value;
+        if (
+            /^https?:\/\//i
+                .test(
+                    value
+                )
+        ) {
+            return value;
+        }
+
+        if (
+            value.indexOf(
+                '//'
+            ) === 0
+        ) {
+            return (
+                'https:' +
+                value
+            );
+        }
+
+        if (
+            value.charAt(0) !==
+            '/'
+        ) {
+            value =
+                '/' +
+                value;
+        }
+
+        return (
+            ORIGIN +
+            value
+        );
     }
 
-    function toPath(value) {
-        value = clean(value);
 
-        if (!value) return '/';
+    function toPath(value) {
+        value =
+            clean(
+                value
+            );
+
+        if (!value) {
+            return '/';
+        }
 
         try {
-            if (/^https?:\/\//i.test(value)) {
-                var a = document.createElement('a');
+            if (
+                /^https?:\/\//i
+                    .test(
+                        value
+                    )
+            ) {
+                var anchor =
+                    document.createElement(
+                        'a'
+                    );
 
-                a.href = value;
+                anchor.href =
+                    value;
 
                 return (
-                    a.pathname || '/'
+                    anchor.pathname ||
+                    '/'
                 ) + (
-                    a.search || ''
+                    anchor.search ||
+                    ''
                 );
             }
         }
         catch (e) {}
 
-        return value.charAt(0) === '/'
+        return (
+            value.charAt(0) ===
+            '/'
+        )
             ? value
             : '/' + value;
     }
 
+
     function workerUrl(path) {
-        return WORKER +
+        return (
+            WORKER +
             '?path=' +
             encodeURIComponent(
                 toPath(
                     path || '/'
                 )
-            );
+            )
+        );
     }
+
 
     function sameAnimeUrl(path) {
-        path = toPath(path);
-
-        return /^\/tip\/[^/]+\/[^?#]+\.html(?:\?.*)?$/i
-            .test(path);
+        return (
+            /^\/tip\/[^/]+\/[^?#]+\.html(?:\?.*)?$/i
+                .test(
+                    toPath(
+                        path
+                    )
+                )
+        );
     }
+
 
     function firstMatch(
         text,
@@ -88,7 +208,8 @@
         var match =
             String(
                 text || ''
-            ).match(
+            )
+            .match(
                 expression
             );
 
@@ -102,20 +223,6 @@
             : '';
     }
 
-    function safeInt(
-        value,
-        fallback
-    ) {
-        var n =
-            parseInt(
-                value,
-                10
-            );
-
-        return isNaN(n)
-            ? fallback
-            : n;
-    }
 
     function textOf(node) {
         try {
@@ -131,6 +238,12 @@
         }
     }
 
+
+
+    /* ============================================================
+       POSTER / ARTICLE HELPERS
+       ============================================================ */
+
     function findPosterInContainer(
         container,
         href
@@ -144,13 +257,20 @@
                 href
             );
 
-        var i;
-
         var links =
             container
                 .querySelectorAll(
                     'a[href]'
                 );
+
+        var i;
+
+
+        /*
+         * First attempt:
+         * poster located inside
+         * the anime-page link.
+         */
 
         for (
             i = 0;
@@ -163,7 +283,8 @@
                         .getAttribute(
                             'href'
                         ) || ''
-                ) === wanted
+                ) ===
+                wanted
             ) {
                 var linked =
                     links[i]
@@ -183,7 +304,9 @@
                             ) ||
                         '';
 
-                    if (linkedSrc) {
+                    if (
+                        linkedSrc
+                    ) {
                         return absoluteUrl(
                             linkedSrc
                         );
@@ -191,6 +314,13 @@
                 }
             }
         }
+
+
+        /*
+         * Second attempt:
+         * find sensible image
+         * within the anime block.
+         */
 
         var images =
             container
@@ -265,7 +395,9 @@
             if (
                 alt ||
                 /uploads|poster|story|covers?/i
-                    .test(src)
+                    .test(
+                        src
+                    )
             ) {
                 return absoluteUrl(
                     src
@@ -275,6 +407,7 @@
 
         return '';
     }
+
 
     function findArticleContainer(node) {
         var current =
@@ -288,9 +421,11 @@
 
         var i;
 
+
         for (
             i = 0;
-            i < 8 && current;
+            i < 8 &&
+            current;
             i++
         ) {
             var text =
@@ -311,6 +446,7 @@
             }
             catch (e) {}
 
+
             if (
                 text.indexOf(
                     'Год выхода:'
@@ -323,13 +459,16 @@
                         'Количество серий:'
                     ) >= 0
                 ) &&
-                titleCount <= 1
+                titleCount <=
+                1
             ) {
                 return current;
             }
 
+
             if (
-                titleCount <= 1
+                titleCount <=
+                1
             ) {
                 best =
                     current;
@@ -339,8 +478,17 @@
                 current.parentElement;
         }
 
-        return best || node;
+        return (
+            best ||
+            node
+        );
     }
+
+
+
+    /* ============================================================
+       SITE MENU PARSING
+       ============================================================ */
 
     function parseMenu(doc) {
         var result = {
@@ -359,6 +507,7 @@
 
         var i;
 
+
         function add(
             group,
             title,
@@ -374,6 +523,7 @@
                     path
                 );
 
+
             if (
                 !title ||
                 !path
@@ -381,10 +531,12 @@
                 return;
             }
 
+
             var key =
                 group +
                 '|' +
                 path;
+
 
             if (
                 seen[key]
@@ -392,8 +544,10 @@
                 return;
             }
 
+
             seen[key] =
                 true;
+
 
             result[group]
                 .push({
@@ -404,6 +558,7 @@
                         path
                 });
         }
+
 
         for (
             i = 0;
@@ -429,6 +584,7 @@
                     ''
                 );
 
+
             if (
                 path.indexOf(
                     '/zhanr/'
@@ -440,6 +596,7 @@
                     path
                 );
             }
+
 
             else if (
                 path.indexOf(
@@ -453,12 +610,15 @@
                 );
             }
 
+
             else if (
                 path.indexOf(
                     '/tip/'
                 ) === 0 &&
                 !/\.html(?:\?|$)/i
-                    .test(path)
+                    .test(
+                        path
+                    )
             ) {
                 add(
                     'types',
@@ -468,8 +628,12 @@
             }
         }
 
+
         result.years.sort(
-            function (a, b) {
+            function (
+                a,
+                b
+            ) {
                 return (
                     safeInt(
                         b.title,
@@ -486,13 +650,18 @@
         return result;
     }
 
-    function parsePageNumber(
-        path
-    ) {
+
+
+    /* ============================================================
+       PAGINATION
+       ============================================================ */
+
+    function parsePageNumber(path) {
         var match =
             toPath(
                 path
-            ).match(
+            )
+            .match(
                 /\/page\/(\d+)\/?/i
             );
 
@@ -504,9 +673,8 @@
             : 1;
     }
 
-    function baseSectionPath(
-        path
-    ) {
+
+    function baseSectionPath(path) {
         var cleanPath =
             toPath(
                 path
@@ -516,6 +684,7 @@
                 ''
             );
 
+
         cleanPath =
             cleanPath
                 .replace(
@@ -523,16 +692,21 @@
                     '/'
                 );
 
+
         if (
             cleanPath.charAt(
-                cleanPath.length - 1
+                cleanPath.length -
+                1
             ) !== '/'
         ) {
-            cleanPath += '/';
+            cleanPath +=
+                '/';
         }
+
 
         return cleanPath;
     }
+
 
     function pagePath(
         base,
@@ -543,19 +717,18 @@
                 base
             );
 
-        if (
-            page <= 1
-        ) {
-            return base;
-        }
-
         return (
-            base +
-            'page/' +
-            page +
-            '/'
-        );
+            page <= 1
+        )
+            ? base
+            : (
+                base +
+                'page/' +
+                page +
+                '/'
+            );
     }
+
 
     function parsePaging(
         doc,
@@ -577,6 +750,7 @@
 
         var i;
 
+
         for (
             i = 0;
             i < anchors.length;
@@ -591,22 +765,24 @@
                     ''
                 );
 
-            var m =
+            var match =
                 href.match(
                     /\/page\/(\d+)\/?/i
                 );
 
-            if (m) {
+
+            if (match) {
                 maxPage =
                     Math.max(
                         maxPage,
                         safeInt(
-                            m[1],
+                            match[1],
                             current
                         )
                     );
             }
         }
+
 
         return {
             current:
@@ -624,7 +800,8 @@
                     : '',
 
             next:
-                maxPage > current
+                maxPage >
+                current
                     ? pagePath(
                         currentPath,
                         current + 1
@@ -633,27 +810,31 @@
         };
     }
 
+
+
+    /* ============================================================
+       CATALOG PARSING
+       ============================================================ */
+
     function extractAvailableFromTitle(
         title
     ) {
-        title =
-            clean(
-                title
-            );
-
         var best =
             0;
 
-        var re =
+        var expression =
             /\[?\s*1\s*-\s*(\d{1,4})\s*(?:из\s*\d+\+?)?/ig;
 
         var match;
 
+
         while (
             (
                 match =
-                    re.exec(
-                        title
+                    expression.exec(
+                        clean(
+                            title
+                        )
                     )
             )
         ) {
@@ -667,8 +848,10 @@
                 );
         }
 
+
         return best;
     }
+
 
     function parseCatalog(
         html,
@@ -681,21 +864,12 @@
             parser
                 .parseFromString(
                     String(
-                        html || ''
+                        html ||
+                        ''
                     ),
                     'text/html'
                 );
 
-        var menu =
-            parseMenu(
-                doc
-            );
-
-        var paging =
-            parsePaging(
-                doc,
-                currentPath
-            );
 
         var headings =
             doc
@@ -703,9 +877,11 @@
                     'h2 a[href*="/tip/"]'
                 );
 
+
         var items = [];
         var seen = {};
         var i;
+
 
         for (
             i = 0;
@@ -731,23 +907,21 @@
                     ''
                 );
 
+
             if (
                 !sameAnimeUrl(
                     href
-                )
-            ) {
-                continue;
-            }
-
-            if (
+                ) ||
                 !title ||
                 seen[href]
             ) {
                 continue;
             }
 
+
             seen[href] =
                 true;
+
 
             var container =
                 findArticleContainer(
@@ -755,10 +929,12 @@
                     anchor
                 );
 
+
             var text =
                 textOf(
                     container
                 );
+
 
             items.push({
                 title:
@@ -810,68 +986,32 @@
             });
         }
 
+
         return {
             items:
                 items,
 
             menu:
-                menu,
+                parseMenu(
+                    doc
+                ),
 
             paging:
-                paging
+                parsePaging(
+                    doc,
+                    currentPath
+                )
         };
     }
 
-    function isUsefulEpisodeHref(
-        value,
-        pagePath
-    ) {
-        value =
-            clean(
-                value
-            );
 
-        if (!value) {
-            return '';
-        }
 
-        if (
-            /^javascript:/i
-                .test(value)
-        ) {
-            return '';
-        }
-
-        if (
-            value === '#'
-        ) {
-            return '';
-        }
-
-        var path =
-            toPath(
-                value
-            );
-
-        var current =
-            toPath(
-                pagePath
-            );
-
-        if (
-            path === current
-        ) {
-            return '';
-        }
-
-        return absoluteUrl(
-            value
-        );
-    }
+    /* ============================================================
+       EPISODE PARSING
+       ============================================================ */
 
     function parseEpisodes(
         doc,
-        pagePath,
         fallbackItem,
         episodeText
     ) {
@@ -881,15 +1021,18 @@
         var candidates =
             doc
                 .querySelectorAll(
-                    'a,button,option,li,span,div,[data-episode],[data-series],[data-seria]'
+                    'a,button,option,li,span,div,' +
+                    '[data-episode],' +
+                    '[data-series],' +
+                    '[data-seria]'
                 );
 
         var i;
 
+
         function add(
             number,
-            label,
-            url
+            label
         ) {
             number =
                 safeInt(
@@ -897,21 +1040,20 @@
                     0
                 );
 
-            if (
-                number <= 0 ||
-                number > 2000
-            ) {
-                return;
-            }
 
             if (
+                number <= 0 ||
+                number >
+                2000 ||
                 seen[number]
             ) {
                 return;
             }
 
+
             seen[number] =
                 true;
+
 
             episodes.push({
                 number:
@@ -924,13 +1066,10 @@
                     (
                         number +
                         ' серия'
-                    ),
-
-                href:
-                    url ||
-                    ''
+                    )
             });
         }
+
 
         for (
             i = 0;
@@ -945,13 +1084,16 @@
                     element
                 );
 
+
             var match =
                 label.match(
                     /^(\d{1,4})\s*(?:серия|серии|эпизод|episode)\s*$/i
                 );
 
+
             var number =
                 0;
+
 
             if (match) {
                 number =
@@ -960,6 +1102,7 @@
                         0
                     );
             }
+
 
             else {
                 var attr =
@@ -976,6 +1119,7 @@
                             'data-seria'
                         ) ||
                     '';
+
 
                 if (
                     /^\d{1,4}$/
@@ -997,37 +1141,21 @@
                 }
             }
 
-            if (!number) {
-                continue;
+
+            if (number) {
+                add(
+                    number,
+                    label
+                );
             }
-
-            var href =
-                element
-                    .getAttribute(
-                        'href'
-                    ) ||
-                element
-                    .getAttribute(
-                        'data-href'
-                    ) ||
-                element
-                    .getAttribute(
-                        'data-url'
-                    ) ||
-                '';
-
-            add(
-                number,
-                label,
-                isUsefulEpisodeHref(
-                    href,
-                    pagePath
-                )
-            );
         }
 
+
         episodes.sort(
-            function (a, b) {
+            function (
+                a,
+                b
+            ) {
                 return (
                     a.number -
                     b.number
@@ -1035,11 +1163,19 @@
             }
         );
 
+
         if (
             episodes.length
         ) {
             return episodes;
         }
+
+
+        /*
+         * Fallback:
+         * build episode buttons
+         * from text such as 1-13.
+         */
 
         var maxEpisode =
             0;
@@ -1050,15 +1186,17 @@
                 ''
             );
 
-        var rangeRe =
+
+        var rangeExpression =
             /\b1\s*-\s*(\d{1,4})\b/g;
 
         var rangeMatch;
 
+
         while (
             (
                 rangeMatch =
-                    rangeRe.exec(
+                    rangeExpression.exec(
                         text
                     )
             )
@@ -1073,10 +1211,12 @@
                 );
         }
 
+
         if (
             !maxEpisode &&
             fallbackItem &&
-            fallbackItem.availableEpisodes
+            fallbackItem
+                .availableEpisodes
         ) {
             maxEpisode =
                 safeInt(
@@ -1086,9 +1226,8 @@
                 );
         }
 
-        if (
-            !maxEpisode
-        ) {
+
+        if (!maxEpisode) {
             var direct =
                 text.match(
                     /\b(\d{1,4})\+?\b/
@@ -1103,12 +1242,14 @@
             }
         }
 
+
         maxEpisode =
             clamp(
                 maxEpisode,
                 0,
                 500
             );
+
 
         for (
             i = 1;
@@ -1117,13 +1258,388 @@
         ) {
             add(
                 i,
-                i + ' серия',
+                i +
+                ' серия'
+            );
+        }
+
+
+        return episodes;
+    }
+
+
+
+    /* ============================================================
+       ANIMEVOST PLAYER DETECTION
+       ============================================================ */
+
+    function scorePlayerUrl(url) {
+        var lower =
+            String(
+                url ||
+                ''
+            )
+            .toLowerCase();
+
+
+        if (!lower) {
+            return -10000;
+        }
+
+
+        /*
+         * Reject obvious adverts.
+         */
+
+        if (
+            /html5banner|loliland|yandex|doubleclick|googlesyndication|adservice|banner|vk\.com|youtube\.com\/embed/
+                .test(
+                    lower
+                )
+        ) {
+            return -10000;
+        }
+
+
+        var score =
+            0;
+
+
+        /*
+         * Current AnimeVost player.
+         */
+
+        if (
+            /frame5\.php/
+                .test(
+                    lower
+                )
+        ) {
+            score +=
+                1000;
+        }
+
+
+        /*
+         * Historical / alternative
+         * AnimeVost player host.
+         */
+
+        if (
+            /play\.aniland\./
+                .test(
+                    lower
+                )
+        ) {
+            score +=
+                800;
+        }
+
+
+        if (
+            /player|video|frame/
+                .test(
+                    lower
+                )
+        ) {
+            score +=
+                150;
+        }
+
+
+        if (
+            /animevost\.org/
+                .test(
+                    lower
+                )
+        ) {
+            score +=
+                100;
+        }
+
+
+        if (
+            /autoplay/
+                .test(
+                    lower
+                )
+        ) {
+            score +=
+                20;
+        }
+
+
+        return score;
+    }
+
+
+    function playerCandidatesFromRawHtml(
+        html
+    ) {
+        var candidates = [];
+        var seen = {};
+
+        var source =
+            String(
+                html ||
+                ''
+            );
+
+
+        var patterns = [
+            /["']([^"']*frame5\.php[^"']*)["']/ig,
+            /["']([^"']*play\.aniland\.[^"']*)["']/ig
+        ];
+
+
+        var patternIndex;
+
+
+        for (
+            patternIndex = 0;
+            patternIndex <
+            patterns.length;
+            patternIndex++
+        ) {
+            var match;
+
+
+            while (
+                (
+                    match =
+                        patterns[
+                            patternIndex
+                        ]
+                        .exec(
+                            source
+                        )
+                )
+            ) {
+                var raw =
+                    clean(
+                        match[1]
+                    )
+                    .replace(
+                        /\\\//g,
+                        '/'
+                    );
+
+
+                var url =
+                    absoluteUrl(
+                        raw
+                    );
+
+
+                if (
+                    url &&
+                    !seen[url]
+                ) {
+                    seen[url] =
+                        true;
+
+                    candidates.push(
+                        url
+                    );
+                }
+            }
+        }
+
+
+        return candidates;
+    }
+
+
+    function extractPlayerUrl(
+        doc,
+        rawHtml
+    ) {
+        var candidates = [];
+        var seen = {};
+
+        var iframes =
+            doc
+                .querySelectorAll(
+                    'iframe[src]'
+                );
+
+        var i;
+
+
+        function add(value) {
+            var url =
+                absoluteUrl(
+                    value
+                );
+
+
+            if (
+                !url ||
+                seen[url]
+            ) {
+                return;
+            }
+
+
+            seen[url] =
+                true;
+
+
+            candidates.push(
+                url
+            );
+        }
+
+
+        /*
+         * Actual iframe tags.
+         */
+
+        for (
+            i = 0;
+            i < iframes.length;
+            i++
+        ) {
+            add(
+                iframes[i]
+                    .getAttribute(
+                        'src'
+                    ) ||
                 ''
             );
         }
 
-        return episodes;
+
+        /*
+         * Also inspect raw source.
+         * Some sites construct the
+         * iframe with JavaScript.
+         */
+
+        var rawCandidates =
+            playerCandidatesFromRawHtml(
+                rawHtml
+            );
+
+
+        for (
+            i = 0;
+            i <
+            rawCandidates.length;
+            i++
+        ) {
+            add(
+                rawCandidates[i]
+            );
+        }
+
+
+        candidates.sort(
+            function (
+                a,
+                b
+            ) {
+                return (
+                    scorePlayerUrl(
+                        b
+                    ) -
+                    scorePlayerUrl(
+                        a
+                    )
+                );
+            }
+        );
+
+
+        if (
+            !candidates.length ||
+            scorePlayerUrl(
+                candidates[0]
+            ) <= 0
+        ) {
+            return '';
+        }
+
+
+        return candidates[0];
     }
+
+
+
+    /*
+     * We ONLY replace an episode
+     * number when the player URL
+     * already exposes an episode
+     * parameter.
+     *
+     * We don't invent undocumented
+     * parameters.
+     */
+
+    function applyEpisodeToPlayerUrl(
+        url,
+        episode
+    ) {
+        if (
+            !url ||
+            !episode
+        ) {
+            return url;
+        }
+
+
+        var keys = [
+            'episode',
+            'ep',
+            'series',
+            'seria',
+            'serie'
+        ];
+
+
+        var result =
+            url;
+
+        var i;
+
+
+        for (
+            i = 0;
+            i < keys.length;
+            i++
+        ) {
+            var expression =
+                new RegExp(
+                    '([?&]' +
+                    keys[i] +
+                    '=)\\d+',
+                    'i'
+                );
+
+
+            if (
+                expression.test(
+                    result
+                )
+            ) {
+                return result
+                    .replace(
+                        expression,
+                        '$1' +
+                        episode
+                    );
+            }
+        }
+
+
+        return result;
+    }
+
+
+
+    /* ============================================================
+       DETAIL PAGE PARSING
+       ============================================================ */
 
     function parseDetail(
         html,
@@ -1132,19 +1648,26 @@
         var parser =
             new DOMParser();
 
+        var rawHtml =
+            String(
+                html ||
+                ''
+            );
+
+
         var doc =
             parser
                 .parseFromString(
-                    String(
-                        html || ''
-                    ),
+                    rawHtml,
                     'text/html'
                 );
+
 
         var bodyText =
             textOf(
                 doc.body
             );
+
 
         var pagePath =
             fallbackItem &&
@@ -1152,19 +1675,23 @@
                 ? fallbackItem.href
                 : '/';
 
+
         var h1 =
             doc
                 .querySelector(
                     'h1'
                 );
 
+
         var title =
             fallbackItem &&
             fallbackItem.title
                 ? clean(
-                    fallbackItem.title
+                    fallbackItem
+                        .title
                 )
                 : '';
+
 
         if (
             h1 &&
@@ -1177,6 +1704,7 @@
                     h1.textContent
                 );
         }
+
 
         if (!title) {
             title =
@@ -1191,11 +1719,13 @@
                 'AnimeVost';
         }
 
+
         var poster =
             fallbackItem &&
             fallbackItem.poster
                 ? fallbackItem.poster
                 : '';
+
 
         if (!poster) {
             try {
@@ -1208,11 +1738,13 @@
             catch (e) {}
         }
 
+
         var originalTitle =
             firstMatch(
                 bodyText,
                 /(?:Оригинальное название|Оригинал(?:ьное название)?|Английское название):\s*(.+?)(?=\s+(?:Год выхода|Год|Жанр|Тип|Количество серий|Режисс[её]р|Длительность|Рейтинг|Описание):|$)/i
             );
+
 
         var year =
             firstMatch(
@@ -1220,11 +1752,13 @@
                 /(?:Год выхода|Год):\s*([^Ж]+?)(?=\s+Жанр:|$)/i
             );
 
+
         var genre =
             firstMatch(
                 bodyText,
                 /Жанр:\s*(.+?)(?=\s+Тип:|$)/i
             );
+
 
         var type =
             firstMatch(
@@ -1232,11 +1766,13 @@
                 /Тип:\s*(.+?)(?=\s+Количество серий:|\s+Режисс[её]р:|\s+Длительность:|\s+Рейтинг:|$)/i
             );
 
+
         var episodeText =
             firstMatch(
                 bodyText,
                 /Количество серий:\s*(.+?)(?=\s+Режисс[её]р:|\s+Длительность:|\s+Рейтинг:|\s+Описание:|$)/i
             );
+
 
         var director =
             firstMatch(
@@ -1244,17 +1780,36 @@
                 /Режисс[её]р:\s*(.+?)(?=\s+(?:Длительность|Рейтинг|Описание|Категории):|$)/i
             );
 
+
         var duration =
             firstMatch(
                 bodyText,
                 /(?:Длительность|Продолжительность):\s*(.+?)(?=\s+(?:Рейтинг|Описание|Категории):|$)/i
             );
 
+
         var description =
             firstMatch(
                 bodyText,
                 /Описание:\s*(.+?)(?=\s+(?:Теги:|Категории:|Правила для комментаторов|Комментарии)|$)/i
             );
+
+
+        var rating =
+            firstMatch(
+                bodyText,
+                /Рейтинг:\s*([0-9]+(?:[\.,][0-9]+)?)/i
+            )
+            .replace(
+                ',',
+                '.'
+            );
+
+
+        /*
+         * Fall back to catalogue
+         * metadata where needed.
+         */
 
         if (
             !year &&
@@ -1265,6 +1820,7 @@
                 '';
         }
 
+
         if (
             !genre &&
             fallbackItem
@@ -1273,6 +1829,7 @@
                 fallbackItem.genre ||
                 '';
         }
+
 
         if (
             !type &&
@@ -1283,6 +1840,7 @@
                 '';
         }
 
+
         if (
             !episodeText &&
             fallbackItem
@@ -1291,6 +1849,7 @@
                 fallbackItem.episodes ||
                 '';
         }
+
 
         if (
             !description &&
@@ -1301,17 +1860,6 @@
                 '';
         }
 
-        var rating =
-            firstMatch(
-                bodyText,
-                /Рейтинг:\s*([0-9]+(?:[\.,][0-9]+)?)/i
-            );
-
-        rating =
-            rating.replace(
-                ',',
-                '.'
-            );
 
         return {
             title:
@@ -1353,68 +1901,37 @@
             episodes:
                 parseEpisodes(
                     doc,
-                    pagePath,
                     fallbackItem,
                     episodeText
+                ),
+
+            playerUrl:
+                extractPlayerUrl(
+                    doc,
+                    rawHtml
                 )
         };
     }
 
-    function openSitePage(url) {
-        url =
-            absoluteUrl(
-                url ||
-                '/'
-            );
 
-        if (
-            url.indexOf(
-                ORIGIN
-            ) !== 0
-        ) {
-            notify(
-                'AnimeVost: недопустимая ссылка'
-            );
 
-            return;
-        }
-
-        try {
-            var popup =
-                window.open(
-                    url,
-                    '_blank'
-                );
-
-            if (popup) {
-                return;
-            }
-        }
-        catch (e) {}
-
-        try {
-            window.location.href =
-                url;
-        }
-        catch (e2) {
-            notify(
-                'Не удалось открыть AnimeVost'
-            );
-        }
-    }
+    /* ============================================================
+       CSS
+       ============================================================ */
 
     function injectStyle() {
         if (
             $(
-                '#animevost-v040-style'
+                '#animevost-v041-style'
             ).length
         ) {
             return;
         }
 
+
         var css =
 
-            '.av40-viewport{' +
+            '.av41-viewport{' +
                 'height:calc(100vh - 6.2em);' +
                 'overflow-y:auto;' +
                 'overflow-x:hidden;' +
@@ -1422,60 +1939,69 @@
                 '-webkit-overflow-scrolling:touch;' +
             '}' +
 
-            '.av40-viewport::-webkit-scrollbar{' +
+            '.av41-viewport::-webkit-scrollbar{' +
                 'width:0;' +
                 'height:0;' +
             '}' +
 
-            '.av40-page{' +
+            '.av41-page{' +
                 'padding:1.3em 2.2em 5em;' +
                 'box-sizing:border-box;' +
             '}' +
 
-            '.av40-title{' +
+            '.av41-title{' +
                 'font-size:2em;' +
                 'font-weight:600;' +
                 'margin:.2em 0 .75em;' +
                 'line-height:1.15;' +
             '}' +
 
-            '.av40-nav{' +
-                'display:flex;' +
-                'flex-wrap:wrap;' +
-                'margin-bottom:1.2em;' +
-            '}' +
-
-            '.av40-navbtn,' +
-            '.av40-action,' +
-            '.av40-pagebtn{' +
-                'padding:.7em 1.05em;' +
-                'margin:0 .55em .55em 0;' +
-                'background:rgba(255,255,255,.10);' +
-                'border-radius:.45em;' +
-                'font-size:1.05em;' +
-            '}' +
-
-            '.av40-navbtn.focus,' +
-            '.av40-action.focus,' +
-            '.av40-pagebtn.focus,' +
-            '.av40-episode.focus{' +
-                'background:#fff;' +
-                'color:#111;' +
-            '}' +
-
-            '.av40-status{' +
-                'padding:1.2em 0;' +
-                'font-size:1.15em;' +
-                'opacity:.8;' +
-            '}' +
-
-            '.av40-grid{' +
+            '.av41-nav,' +
+            '.av41-pages,' +
+            '.av41-actions,' +
+            '.av41-episodes{' +
                 'display:flex;' +
                 'flex-wrap:wrap;' +
                 'align-items:flex-start;' +
             '}' +
 
-            '.av40-card{' +
+            '.av41-nav{' +
+                'margin-bottom:1.2em;' +
+            '}' +
+
+            '.av41-navbtn,' +
+            '.av41-action,' +
+            '.av41-pagebtn,' +
+            '.av41-episode{' +
+                'padding:.7em 1.05em;' +
+                'margin:0 .55em .55em 0;' +
+                'background:rgba(255,255,255,.10);' +
+                'border-radius:.45em;' +
+                'font-size:1.05em;' +
+                'box-sizing:border-box;' +
+            '}' +
+
+            '.av41-navbtn.focus,' +
+            '.av41-action.focus,' +
+            '.av41-pagebtn.focus,' +
+            '.av41-episode.focus{' +
+                'background:#fff;' +
+                'color:#111;' +
+            '}' +
+
+            '.av41-status{' +
+                'padding:1.2em 0;' +
+                'font-size:1.15em;' +
+                'opacity:.8;' +
+            '}' +
+
+            '.av41-grid{' +
+                'display:flex;' +
+                'flex-wrap:wrap;' +
+                'align-items:flex-start;' +
+            '}' +
+
+            '.av41-card{' +
                 'width:12.2em;' +
                 'margin:0 1.05em 1.3em 0;' +
                 'border-radius:.55em;' +
@@ -1484,12 +2010,12 @@
                 'box-sizing:border-box;' +
             '}' +
 
-            '.av40-card.focus{' +
+            '.av41-card.focus{' +
                 'background:rgba(255,255,255,.18);' +
                 'transform:scale(1.025);' +
             '}' +
 
-            '.av40-poster{' +
+            '.av41-poster{' +
                 'width:100%;' +
                 'height:17.4em;' +
                 'border-radius:.4em;' +
@@ -1500,28 +2026,29 @@
                 'justify-content:center;' +
             '}' +
 
-            '.av40-poster img{' +
+            '.av41-poster img,' +
+            '.av41-detail-poster img{' +
                 'width:100%;' +
                 'height:100%;' +
                 'object-fit:cover;' +
                 'display:block;' +
             '}' +
 
-            '.av40-fallback{' +
+            '.av41-fallback{' +
                 'font-size:1em;' +
                 'opacity:.55;' +
                 'text-align:center;' +
                 'padding:1em;' +
             '}' +
 
-            '.av40-name{' +
+            '.av41-name{' +
                 'font-size:1.03em;' +
                 'line-height:1.25;' +
                 'margin-top:.6em;' +
                 'min-height:2.5em;' +
             '}' +
 
-            '.av40-meta{' +
+            '.av41-meta{' +
                 'font-size:.83em;' +
                 'line-height:1.3;' +
                 'opacity:.62;' +
@@ -1529,20 +2056,18 @@
                 'min-height:2.1em;' +
             '}' +
 
-            '.av40-pages{' +
-                'display:flex;' +
-                'flex-wrap:wrap;' +
+            '.av41-pages{' +
                 'margin-top:.4em;' +
                 'padding-bottom:1em;' +
             '}' +
 
-            '.av40-detail-top{' +
+            '.av41-detail-top{' +
                 'display:flex;' +
                 'align-items:flex-start;' +
                 'margin-bottom:1.4em;' +
             '}' +
 
-            '.av40-detail-poster{' +
+            '.av41-detail-poster{' +
                 'width:15em;' +
                 'min-width:15em;' +
                 'height:21em;' +
@@ -1552,71 +2077,52 @@
                 'background:rgba(255,255,255,.08);' +
             '}' +
 
-            '.av40-detail-poster img{' +
-                'width:100%;' +
-                'height:100%;' +
-                'object-fit:cover;' +
-            '}' +
-
-            '.av40-detail-body{' +
+            '.av41-detail-body{' +
                 'max-width:68em;' +
             '}' +
 
-            '.av40-detail-original{' +
+            '.av41-detail-original{' +
                 'font-size:1.05em;' +
                 'opacity:.65;' +
                 'margin-top:-.45em;' +
                 'margin-bottom:.9em;' +
             '}' +
 
-            '.av40-detail-meta{' +
+            '.av41-detail-meta{' +
                 'font-size:1.04em;' +
                 'line-height:1.55;' +
                 'opacity:.78;' +
                 'margin-bottom:1em;' +
             '}' +
 
-            '.av40-detail-description{' +
+            '.av41-detail-description{' +
                 'font-size:1.05em;' +
                 'line-height:1.55;' +
                 'white-space:normal;' +
             '}' +
 
-            '.av40-actions{' +
-                'display:flex;' +
-                'flex-wrap:wrap;' +
+            '.av41-actions{' +
                 'margin:1.25em 0 1.3em;' +
             '}' +
 
-            '.av40-section-title{' +
+            '.av41-section-title{' +
                 'font-size:1.45em;' +
                 'font-weight:600;' +
                 'margin:1.2em 0 .75em;' +
             '}' +
 
-            '.av40-episodes{' +
-                'display:flex;' +
-                'flex-wrap:wrap;' +
-                'align-items:flex-start;' +
-            '}' +
-
-            '.av40-episode{' +
+            '.av41-episode{' +
                 'min-width:7.3em;' +
                 'text-align:center;' +
-                'padding:.72em .85em;' +
-                'margin:0 .55em .55em 0;' +
-                'background:rgba(255,255,255,.09);' +
-                'border-radius:.42em;' +
-                'box-sizing:border-box;' +
             '}' +
 
-            '.av40-episode.selected{' +
+            '.av41-episode.selected{' +
                 'box-shadow:' +
                 'inset 0 0 0 .16em ' +
                 'rgba(255,255,255,.65);' +
             '}' +
 
-            '.av40-note{' +
+            '.av41-note{' +
                 'margin-top:1.2em;' +
                 'padding:1em 1.15em;' +
                 'background:rgba(255,255,255,.07);' +
@@ -1624,14 +2130,85 @@
                 'opacity:.72;' +
                 'font-size:.96em;' +
                 'line-height:1.45;' +
+            '}' +
+
+
+            /* Player */
+
+            '.av41-player{' +
+                'position:fixed;' +
+                'left:0;' +
+                'top:0;' +
+                'right:0;' +
+                'bottom:0;' +
+                'background:#000;' +
+                'z-index:999999;' +
+                'display:flex;' +
+                'flex-direction:column;' +
+            '}' +
+
+            '.av41-player__bar{' +
+                'height:3.35em;' +
+                'min-height:3.35em;' +
+                'background:rgba(15,15,15,.96);' +
+                'display:flex;' +
+                'align-items:center;' +
+                'padding:0 1em;' +
+                'box-sizing:border-box;' +
+            '}' +
+
+            '.av41-player__title{' +
+                'font-size:1.05em;' +
+                'white-space:nowrap;' +
+                'overflow:hidden;' +
+                'text-overflow:ellipsis;' +
+                'flex:1;' +
+                'padding-right:1em;' +
+            '}' +
+
+            '.av41-player__close{' +
+                'padding:.55em .8em;' +
+                'border-radius:.35em;' +
+                'background:rgba(255,255,255,.12);' +
+            '}' +
+
+            '.av41-player__close.focus{' +
+                'background:#fff;' +
+                'color:#111;' +
+            '}' +
+
+            '.av41-player iframe{' +
+                'width:100%;' +
+                'height:calc(100% - 3.35em);' +
+                'border:0;' +
+                'background:#000;' +
+                'display:block;' +
+            '}' +
+
+            '.av41-player__hint{' +
+                'position:absolute;' +
+                'left:1em;' +
+                'bottom:1em;' +
+                'background:rgba(0,0,0,.72);' +
+                'padding:.55em .8em;' +
+                'border-radius:.35em;' +
+                'font-size:.85em;' +
+                'pointer-events:none;' +
             '}';
 
+
         $('head').append(
-            '<style id="animevost-v040-style">' +
+            '<style id="animevost-v041-style">' +
                 css +
             '</style>'
         );
     }
+
+
+
+    /* ============================================================
+       GENERIC UI HELPERS
+       ============================================================ */
 
     function createPosterBox(
         className,
@@ -1644,42 +2221,48 @@
                 '"></div>'
             );
 
+
         if (posterUrl) {
-            var img =
+            var image =
                 $('<img alt="">')
                     .attr(
                         'src',
                         posterUrl
                     );
 
-            img.on(
+
+            image.on(
                 'error',
                 function () {
                     box
                         .empty()
                         .append(
-                            '<div class="av40-fallback">' +
+                            '<div class="av41-fallback">' +
                                 'AnimeVost' +
                             '</div>'
                         );
                 }
             );
 
+
             box.append(
-                img
+                image
             );
         }
 
+
         else {
             box.append(
-                '<div class="av40-fallback">' +
+                '<div class="av41-fallback">' +
                     'AnimeVost' +
                 '</div>'
             );
         }
 
+
         return box;
     }
+
 
     function ensureVisible(
         viewport,
@@ -1693,54 +2276,59 @@
             return;
         }
 
-        var vp =
+
+        var container =
             viewport[0];
 
-        var er =
+        var elementRect =
             element
                 .getBoundingClientRect();
 
-        var vr =
-            vp
+        var viewportRect =
+            container
                 .getBoundingClientRect();
 
-        var topPad =
+
+        var topPadding =
             22;
 
-        var bottomPad =
+        var bottomPadding =
             40;
 
+
         if (
-            er.bottom >
-            vr.bottom -
-            bottomPad
+            elementRect.bottom >
+            viewportRect.bottom -
+            bottomPadding
         ) {
-            vp.scrollTop +=
-                er.bottom -
+            container.scrollTop +=
+                elementRect.bottom -
                 (
-                    vr.bottom -
-                    bottomPad
+                    viewportRect.bottom -
+                    bottomPadding
                 );
         }
 
+
         else if (
-            er.top <
-            vr.top +
-            topPad
+            elementRect.top <
+            viewportRect.top +
+            topPadding
         ) {
-            vp.scrollTop -=
+            container.scrollTop -=
                 (
-                    vr.top +
-                    topPad
+                    viewportRect.top +
+                    topPadding
                 ) -
-                er.top;
+                elementRect.top;
         }
     }
 
-    function visibleSelectors(
-        root
-    ) {
-        var result = [];
+
+    function visibleSelectors(root) {
+        var result =
+            [];
+
 
         root
             .find(
@@ -1760,53 +2348,66 @@
                 }
             );
 
+
         return result;
     }
 
-    function groupRows(
-        elements
-    ) {
-        var rows = [];
-        var tolerance = 10;
+
+    function groupRows(elements) {
+        var rows =
+            [];
+
+        var tolerance =
+            10;
+
         var i;
+
 
         for (
             i = 0;
             i < elements.length;
             i++
         ) {
-            var el =
+            var element =
                 elements[i];
 
+
             var rect =
-                el
+                element
                     .getBoundingClientRect();
+
 
             var top =
                 rect.top;
 
+
             var found =
                 null;
 
-            var r;
+            var rowIndex;
+
 
             for (
-                r = 0;
-                r < rows.length;
-                r++
+                rowIndex = 0;
+                rowIndex <
+                rows.length;
+                rowIndex++
             ) {
                 if (
                     Math.abs(
-                        rows[r].top -
+                        rows[rowIndex]
+                            .top -
                         top
-                    ) <= tolerance
+                    ) <=
+                    tolerance
                 ) {
                     found =
-                        rows[r];
+                        rows[rowIndex];
 
                     break;
                 }
             }
+
 
             if (!found) {
                 found = {
@@ -1817,24 +2418,31 @@
                         []
                 };
 
+
                 rows.push(
                     found
                 );
             }
 
+
             found.items.push(
-                el
+                element
             );
         }
 
+
         rows.sort(
-            function (a, b) {
+            function (
+                a,
+                b
+            ) {
                 return (
                     a.top -
                     b.top
                 );
             }
         );
+
 
         for (
             i = 0;
@@ -1844,7 +2452,10 @@
             rows[i]
                 .items
                 .sort(
-                    function (a, b) {
+                    function (
+                        a,
+                        b
+                    ) {
                         return (
                             a
                                 .getBoundingClientRect()
@@ -1857,8 +2468,10 @@
                 );
         }
 
+
         return rows;
     }
+
 
     function nearestByCenter(
         items,
@@ -1877,14 +2490,17 @@
                 : null;
         }
 
-        var cr =
+
+        var currentRect =
             current
                 .getBoundingClientRect();
 
-        var cx =
-            cr.left +
-            cr.width /
+
+        var currentCenter =
+            currentRect.left +
+            currentRect.width /
             2;
+
 
         var best =
             items[0];
@@ -1894,25 +2510,29 @@
 
         var i;
 
+
         for (
             i = 0;
             i < items.length;
             i++
         ) {
-            var ir =
+            var rect =
                 items[i]
                     .getBoundingClientRect();
 
-            var ix =
-                ir.left +
-                ir.width /
+
+            var center =
+                rect.left +
+                rect.width /
                 2;
+
 
             var distance =
                 Math.abs(
-                    ix -
-                    cx
+                    center -
+                    currentCenter
                 );
+
 
             if (
                 distance <
@@ -1926,8 +2546,10 @@
             }
         }
 
+
         return best;
     }
+
 
     function createNavigation(
         root,
@@ -1937,6 +2559,7 @@
     ) {
         var last =
             null;
+
 
         function current() {
             if (
@@ -1950,35 +2573,40 @@
                 return last;
             }
 
+
             var focused =
                 root
                     .find(
                         '.selector.focus'
                     )[0];
 
+
             if (focused) {
                 return focused;
             }
+
 
             var selectors =
                 visibleSelectors(
                     root
                 );
 
+
             return selectors.length
                 ? selectors[0]
                 : null;
         }
 
-        function focus(
-            element
-        ) {
+
+        function focus(element) {
             if (!element) {
                 return false;
             }
 
+
             last =
                 element;
+
 
             try {
                 Lampa.Controller
@@ -1987,6 +2615,7 @@
                         viewport
                     );
             }
+
 
             catch (e) {
                 try {
@@ -1998,45 +2627,52 @@
                 catch (e2) {}
             }
 
+
             ensureVisible(
                 viewport,
                 element
             );
 
+
             return true;
         }
 
-        function move(
-            direction
-        ) {
+
+        function move(direction) {
             var selectors =
                 visibleSelectors(
                     root
                 );
 
-            var cur =
+
+            var currentElement =
                 current();
+
 
             if (
                 !selectors.length ||
-                !cur
+                !currentElement
             ) {
                 return false;
             }
+
 
             var rows =
                 groupRows(
                     selectors
                 );
 
+
             var rowIndex =
                 -1;
 
-            var colIndex =
+            var columnIndex =
                 -1;
+
 
             var r;
             var c;
+
 
             for (
                 r = 0;
@@ -2054,17 +2690,18 @@
                     if (
                         rows[r]
                             .items[c] ===
-                        cur
+                        currentElement
                     ) {
                         rowIndex =
                             r;
 
-                        colIndex =
+                        columnIndex =
                             c;
 
                         break;
                     }
                 }
+
 
                 if (
                     rowIndex >=
@@ -2073,6 +2710,7 @@
                     break;
                 }
             }
+
 
             if (
                 rowIndex <
@@ -2083,22 +2721,24 @@
                 );
             }
 
+
             if (
                 direction ===
                 'left'
             ) {
                 if (
-                    colIndex >
+                    columnIndex >
                     0
                 ) {
                     return focus(
                         rows[rowIndex]
                             .items[
-                                colIndex -
+                                columnIndex -
                                 1
                             ]
                     );
                 }
+
 
                 if (
                     typeof onEdgeLeft ===
@@ -2107,15 +2747,17 @@
                     onEdgeLeft();
                 }
 
+
                 return false;
             }
+
 
             if (
                 direction ===
                 'right'
             ) {
                 if (
-                    colIndex <
+                    columnIndex <
                     rows[rowIndex]
                         .items
                         .length -
@@ -2124,14 +2766,16 @@
                     return focus(
                         rows[rowIndex]
                             .items[
-                                colIndex +
+                                columnIndex +
                                 1
                             ]
                     );
                 }
 
+
                 return false;
             }
+
 
             if (
                 direction ===
@@ -2147,10 +2791,11 @@
                                 rowIndex -
                                 1
                             ].items,
-                            cur
+                            currentElement
                         )
                     );
                 }
+
 
                 if (
                     typeof onEdgeUp ===
@@ -2159,8 +2804,10 @@
                     onEdgeUp();
                 }
 
+
                 return false;
             }
+
 
             if (
                 direction ===
@@ -2177,18 +2824,21 @@
                                 rowIndex +
                                 1
                             ].items,
-                            cur
+                            currentElement
                         )
                     );
                 }
 
+
                 return false;
             }
+
 
             return false;
         }
 
-        function bindFocusTracking() {
+
+        function bind() {
             root
                 .find(
                     '.selector'
@@ -2205,6 +2855,7 @@
                         last =
                             this;
 
+
                         ensureVisible(
                             viewport,
                             this
@@ -2213,6 +2864,7 @@
                 );
         }
 
+
         return {
             focus:
                 focus,
@@ -2220,11 +2872,8 @@
             move:
                 move,
 
-            current:
-                current,
-
             bind:
-                bindFocusTracking,
+                bind,
 
             getLast:
                 function () {
@@ -2238,6 +2887,289 @@
                 }
         };
     }
+
+
+
+    /* ============================================================
+       FULLSCREEN EMBEDDED PLAYER
+       ============================================================ */
+
+    function closeEmbeddedPlayer() {
+        if (
+            !currentPlayerOverlay
+        ) {
+            return;
+        }
+
+
+        try {
+            currentPlayerOverlay
+                .remove();
+        }
+        catch (e) {}
+
+
+        currentPlayerOverlay =
+            null;
+
+
+        try {
+            Lampa.Controller
+                .toggle(
+                    'content'
+                );
+        }
+        catch (e2) {}
+    }
+
+
+    function openEmbeddedPlayer(
+        title,
+        playerUrl,
+        episode
+    ) {
+        closeEmbeddedPlayer();
+
+
+        if (!playerUrl) {
+            notify(
+                'AnimeVost: встроенный плеер не найден на странице.'
+            );
+
+            return;
+        }
+
+
+        var finalUrl =
+            applyEpisodeToPlayerUrl(
+                playerUrl,
+                episode
+            );
+
+
+        var overlay =
+            $(
+                '<div class="av41-player"></div>'
+            );
+
+
+        var bar =
+            $(
+                '<div class="av41-player__bar"></div>'
+            );
+
+
+        var label =
+            $(
+                '<div class="av41-player__title"></div>'
+            )
+            .text(
+                title +
+                (
+                    episode
+                        ? ' • серия ' +
+                          episode
+                        : ''
+                )
+            );
+
+
+        var closeButton =
+            $(
+                '<div class="av41-player__close selector">' +
+                    '✕ Закрыть' +
+                '</div>'
+            );
+
+
+        var iframe =
+            $(
+                '<iframe ' +
+                    'tabindex="0" ' +
+                    'allow="autoplay; fullscreen; picture-in-picture" ' +
+                    'allowfullscreen>' +
+                '</iframe>'
+            );
+
+
+        var hint =
+            $(
+                '<div class="av41-player__hint">' +
+                    'OK/стрелка — управление плеером • Back — выход' +
+                '</div>'
+            );
+
+
+        iframe.attr(
+            'src',
+            finalUrl
+        );
+
+
+        bar
+            .append(
+                label
+            )
+            .append(
+                closeButton
+            );
+
+
+        overlay
+            .append(
+                bar
+            )
+            .append(
+                iframe
+            )
+            .append(
+                hint
+            );
+
+
+        $('body')
+            .append(
+                overlay
+            );
+
+
+        currentPlayerOverlay =
+            overlay;
+
+
+        /*
+         * Important:
+         *
+         * Focus is moved into
+         * the iframe so future
+         * remote key events have
+         * a chance to be handled
+         * by AnimeVost's player.
+         */
+
+        function focusFrame() {
+            try {
+                iframe[0]
+                    .focus();
+            }
+            catch (e) {}
+
+
+            try {
+                if (
+                    iframe[0]
+                        .contentWindow
+                ) {
+                    iframe[0]
+                        .contentWindow
+                        .focus();
+                }
+            }
+            catch (e2) {}
+        }
+
+
+        closeButton.on(
+            'hover:enter click',
+            closeEmbeddedPlayer
+        );
+
+
+        iframe.on(
+            'load',
+
+            function () {
+                setTimeout(
+                    focusFrame,
+                    120
+                );
+
+
+                setTimeout(
+                    function () {
+                        try {
+                            hint.fadeOut(
+                                300
+                            );
+                        }
+                        catch (e) {
+                            hint.hide();
+                        }
+                    },
+                    3500
+                );
+            }
+        );
+
+
+        /*
+         * Controller intentionally
+         * does NOT navigate player
+         * controls itself.
+         *
+         * It only moves focus to
+         * the iframe and provides
+         * a Back fallback.
+         */
+
+        Lampa.Controller.add(
+            PLAYER_CONTROLLER,
+
+            {
+                toggle:
+                    function () {
+                        Lampa.Controller
+                            .collectionSet(
+                                overlay
+                            );
+
+                        focusFrame();
+                    },
+
+
+                left:
+                    focusFrame,
+
+
+                right:
+                    focusFrame,
+
+
+                up:
+                    focusFrame,
+
+
+                down:
+                    focusFrame,
+
+
+                ok:
+                    focusFrame,
+
+
+                back:
+                    closeEmbeddedPlayer
+            }
+        );
+
+
+        Lampa.Controller
+            .toggle(
+                PLAYER_CONTROLLER
+            );
+
+
+        setTimeout(
+            focusFrame,
+            80
+        );
+    }
+
+
+
+    /* ============================================================
+       OPEN COMPONENT HELPERS
+       ============================================================ */
 
     function openCatalog(
         path,
@@ -2267,9 +3199,8 @@
         });
     }
 
-    function openDetail(
-        item
-    ) {
+
+    function openDetail(item) {
         Lampa.Activity.push({
             url:
                 '',
@@ -2289,6 +3220,7 @@
         });
     }
 
+
     function showSelect(
         title,
         list
@@ -2303,6 +3235,7 @@
 
             return;
         }
+
 
         Lampa.Select.show({
             title:
@@ -2321,6 +3254,7 @@
                     }
                 ),
 
+
             onSelect:
                 function (item) {
                     openCatalog(
@@ -2328,6 +3262,7 @@
                         item.title
                     );
                 },
+
 
             onBack:
                 function () {
@@ -2339,24 +3274,34 @@
         });
     }
 
+
+
+    /* ============================================================
+       CATALOG COMPONENT
+       ============================================================ */
+
     function CatalogComponent(
         object
     ) {
         var network =
             new Lampa.Reguest();
 
+
         var alive =
             false;
 
+
         var viewport =
             $(
-                '<div class="av40-viewport"></div>'
+                '<div class="av41-viewport"></div>'
             );
+
 
         var root =
             $(
-                '<div class="av40-page"></div>'
+                '<div class="av41-page"></div>'
             );
+
 
         var menu = {
             genres: [],
@@ -2364,46 +3309,30 @@
             years: []
         };
 
+
         var path =
             object.av_path ||
             '/';
+
 
         var title =
             object.av_title ||
             'AnimeVost';
 
+
         var self =
             this;
 
+
         var nav;
 
-        function renderLoading() {
-            root.empty();
-
-            viewport[0]
-                .scrollTop =
-                0;
-
-            root.append(
-                $(
-                    '<div class="av40-title"></div>'
-                ).text(
-                    title
-                )
-            );
-
-            root.append(
-                '<div class="av40-status">' +
-                    'Загрузка AnimeVost...' +
-                '</div>'
-            );
-        }
 
         function addTopNavigation() {
             var bar =
                 $(
-                    '<div class="av40-nav"></div>'
+                    '<div class="av41-nav"></div>'
                 );
+
 
             function add(
                 label,
@@ -2411,21 +3340,24 @@
             ) {
                 var button =
                     $(
-                        '<div class="av40-navbtn selector"></div>'
+                        '<div class="av41-navbtn selector"></div>'
                     )
                     .text(
                         label
                     );
+
 
                 button.on(
                     'hover:enter',
                     handler
                 );
 
+
                 bar.append(
                     button
                 );
             }
+
 
             add(
                 'Главная',
@@ -2437,6 +3369,7 @@
                 }
             );
 
+
             add(
                 'Жанр',
                 function () {
@@ -2446,6 +3379,7 @@
                     );
                 }
             );
+
 
             add(
                 'Категории',
@@ -2457,6 +3391,7 @@
                 }
             );
 
+
             add(
                 'Год',
                 function () {
@@ -2466,6 +3401,7 @@
                     );
                 }
             );
+
 
             add(
                 'Онгоинги',
@@ -2477,6 +3413,7 @@
                 }
             );
 
+
             add(
                 'Анонсы',
                 function () {
@@ -2487,10 +3424,12 @@
                 }
             );
 
+
             root.append(
                 bar
             );
         }
+
 
         function addCard(
             grid,
@@ -2498,27 +3437,31 @@
         ) {
             var card =
                 $(
-                    '<div class="av40-card selector"></div>'
+                    '<div class="av41-card selector"></div>'
                 );
+
 
             card.append(
                 createPosterBox(
-                    'av40-poster',
+                    'av41-poster',
                     item.poster
                 )
             );
 
+
             card.append(
                 $(
-                    '<div class="av40-name"></div>'
+                    '<div class="av41-name"></div>'
                 )
                 .text(
                     item.title
                 )
             );
 
+
             var meta =
                 [];
+
 
             if (
                 item.year
@@ -2528,6 +3471,7 @@
                 );
             }
 
+
             if (
                 item.type
             ) {
@@ -2535,6 +3479,7 @@
                     item.type
                 );
             }
+
 
             if (
                 item.episodes
@@ -2548,9 +3493,10 @@
                 );
             }
 
+
             card.append(
                 $(
-                    '<div class="av40-meta"></div>'
+                    '<div class="av41-meta"></div>'
                 )
                 .text(
                     meta.join(
@@ -2558,6 +3504,7 @@
                     )
                 )
             );
+
 
             card.on(
                 'hover:enter',
@@ -2569,10 +3516,12 @@
                 }
             );
 
+
             grid.append(
                 card
             );
         }
+
 
         function addPaging(
             paging
@@ -2587,17 +3536,19 @@
                 return;
             }
 
+
             var pages =
                 $(
-                    '<div class="av40-pages"></div>'
+                    '<div class="av41-pages"></div>'
                 );
+
 
             if (
                 paging.previous
             ) {
-                var prev =
+                var previous =
                     $(
-                        '<div class="av40-pagebtn selector"></div>'
+                        '<div class="av41-pagebtn selector"></div>'
                     )
                     .text(
                         '← Страница ' +
@@ -2607,7 +3558,8 @@
                         )
                     );
 
-                prev.on(
+
+                previous.on(
                     'hover:enter',
 
                     function () {
@@ -2618,14 +3570,16 @@
                     }
                 );
 
+
                 pages.append(
-                    prev
+                    previous
                 );
             }
 
-            var current =
+
+            pages.append(
                 $(
-                    '<div class="av40-pagebtn"></div>'
+                    '<div class="av41-pagebtn"></div>'
                 )
                 .text(
                     'Страница ' +
@@ -2637,18 +3591,16 @@
                               paging.max
                             : ''
                     )
-                );
-
-            pages.append(
-                current
+                )
             );
+
 
             if (
                 paging.next
             ) {
                 var next =
                     $(
-                        '<div class="av40-pagebtn selector"></div>'
+                        '<div class="av41-pagebtn selector"></div>'
                     )
                     .text(
                         'Страница ' +
@@ -2658,6 +3610,7 @@
                         ) +
                         ' →'
                     );
+
 
                 next.on(
                     'hover:enter',
@@ -2670,15 +3623,18 @@
                     }
                 );
 
+
                 pages.append(
                     next
                 );
             }
 
+
             root.append(
                 pages
             );
         }
+
 
         function renderError(
             message
@@ -2687,31 +3643,36 @@
                 return;
             }
 
+
             root.empty();
+
 
             root.append(
                 $(
-                    '<div class="av40-title"></div>'
+                    '<div class="av41-title"></div>'
                 )
                 .text(
                     title
                 )
             );
 
+
             root.append(
                 $(
-                    '<div class="av40-status"></div>'
+                    '<div class="av41-status"></div>'
                 )
                 .text(
                     message
                 )
             );
 
+
             self.activity
                 .loader(
                     false
                 );
         }
+
 
         function renderCatalog(
             data
@@ -2720,43 +3681,51 @@
                 return;
             }
 
+
             root.empty();
+
 
             viewport[0]
                 .scrollTop =
                 0;
 
+
             menu =
                 data.menu ||
                 menu;
 
+
             root.append(
                 $(
-                    '<div class="av40-title"></div>'
+                    '<div class="av41-title"></div>'
                 )
                 .text(
                     title
                 )
             );
 
+
             addTopNavigation();
+
 
             if (
                 !data.items ||
                 !data.items.length
             ) {
                 root.append(
-                    '<div class="av40-status">' +
+                    '<div class="av41-status">' +
                         'Карточки аниме на этой странице не найдены.' +
                     '</div>'
                 );
             }
 
+
             else {
                 var grid =
                     $(
-                        '<div class="av40-grid"></div>'
+                        '<div class="av41-grid"></div>'
                     );
+
 
                 data.items.forEach(
                     function (item) {
@@ -2767,21 +3736,26 @@
                     }
                 );
 
+
                 root.append(
                     grid
                 );
             }
 
+
             addPaging(
                 data.paging
             );
 
+
             nav.bind();
+
 
             self.activity
                 .loader(
                     false
                 );
+
 
             setTimeout(
                 function () {
@@ -2789,10 +3763,12 @@
                         return;
                     }
 
+
                     var selectors =
                         visibleSelectors(
                             root
                         );
+
 
                     if (
                         selectors.length
@@ -2806,21 +3782,40 @@
             );
         }
 
+
         this.create =
             function () {
                 alive =
                     true;
 
+
                 viewport.append(
                     root
                 );
 
-                renderLoading();
+
+                root.append(
+                    $(
+                        '<div class="av41-title"></div>'
+                    )
+                    .text(
+                        title
+                    )
+                );
+
+
+                root.append(
+                    '<div class="av41-status">' +
+                        'Загрузка AnimeVost...' +
+                    '</div>'
+                );
+
 
                 this.activity
                     .loader(
                         true
                     );
+
 
                 nav =
                     createNavigation(
@@ -2842,19 +3837,23 @@
                         }
                     );
 
+
                 network.timeout(
                     20000
                 );
+
 
                 network.silent(
                     workerUrl(
                         path
                     ),
 
+
                     function (html) {
                         if (!alive) {
                             return;
                         }
+
 
                         try {
                             renderCatalog(
@@ -2868,11 +3867,13 @@
                             );
                         }
 
+
                         catch (error) {
                             console.log(
                                 'AnimeVost catalog parse error',
                                 error
                             );
+
 
                             renderError(
                                 'Ошибка разбора AnimeVost: ' +
@@ -2886,13 +3887,16 @@
                         }
                     },
 
+
                     function (error) {
                         if (!alive) {
                             return;
                         }
 
+
                         var code =
                             '?';
+
 
                         try {
                             code =
@@ -2900,13 +3904,16 @@
                         }
                         catch (e) {}
 
+
                         renderError(
                             'Не удалось загрузить AnimeVost. Код: ' +
                             code
                         );
                     },
 
+
                     false,
+
 
                     {
                         dataType:
@@ -2914,8 +3921,10 @@
                     }
                 );
 
+
                 return this.render();
             };
+
 
         this.start =
             function () {
@@ -2928,6 +3937,7 @@
                     return;
                 }
 
+
                 Lampa.Controller.add(
                     'content',
 
@@ -2939,12 +3949,14 @@
                                         viewport
                                     );
 
+
                                 Lampa.Controller
                                     .collectionFocus(
                                         nav.getLast() ||
                                         false,
                                         viewport
                                     );
+
 
                                 if (
                                     nav.getLast()
@@ -2956,12 +3968,14 @@
                                 }
                             },
 
+
                         left:
                             function () {
                                 nav.move(
                                     'left'
                                 );
                             },
+
 
                         right:
                             function () {
@@ -2970,6 +3984,7 @@
                                 );
                             },
 
+
                         up:
                             function () {
                                 nav.move(
@@ -2977,12 +3992,14 @@
                                 );
                             },
 
+
                         down:
                             function () {
                                 nav.move(
                                     'down'
                                 );
                             },
+
 
                         back:
                             function () {
@@ -2992,35 +4009,49 @@
                     }
                 );
 
+
                 Lampa.Controller
                     .toggle(
                         'content'
                     );
             };
 
+
         this.pause =
             function () {};
 
+
         this.stop =
             function () {};
+
 
         this.render =
             function () {
                 return viewport;
             };
 
+
         this.destroy =
             function () {
                 alive =
                     false;
 
+
                 network.clear();
 
+
                 viewport.remove();
+
 
                 root.remove();
             };
     }
+
+
+
+    /* ============================================================
+       DETAIL COMPONENT
+       ============================================================ */
 
     function DetailComponent(
         object
@@ -3028,44 +4059,90 @@
         var network =
             new Lampa.Reguest();
 
+
         var alive =
             false;
 
+
         var viewport =
             $(
-                '<div class="av40-viewport"></div>'
+                '<div class="av41-viewport"></div>'
             );
+
 
         var root =
             $(
-                '<div class="av40-page"></div>'
+                '<div class="av41-page"></div>'
             );
+
 
         var item =
             object.av_item ||
             {};
 
+
         var self =
             this;
 
+
         var nav;
+
 
         var selectedEpisode =
             0;
 
+
         var detail =
             null;
 
-        function renderLoading() {
+
+        function updateEpisodeSelection() {
+            root
+                .find(
+                    '.av41-episode'
+                )
+                .each(
+                    function () {
+                        var element =
+                            $(
+                                this
+                            );
+
+
+                        var number =
+                            safeInt(
+                                element.attr(
+                                    'data-episode'
+                                ),
+                                0
+                            );
+
+
+                        element
+                            .toggleClass(
+                                'selected',
+                                number ===
+                                selectedEpisode
+                            );
+                    }
+                );
+        }
+
+
+        function renderError(
+            message
+        ) {
+            if (!alive) {
+                return;
+            }
+
+
             root.empty();
 
-            viewport[0]
-                .scrollTop =
-                0;
 
             root.append(
                 $(
-                    '<div class="av40-title"></div>'
+                    '<div class="av41-title"></div>'
                 )
                 .text(
                     item.title ||
@@ -3073,121 +4150,68 @@
                 )
             );
 
+
             root.append(
-                '<div class="av40-status">' +
-                    'Загрузка страницы аниме...' +
-                '</div>'
-            );
-        }
-
-        function watchTarget() {
-            if (!detail) {
-                return absoluteUrl(
-                    item.href ||
-                    '/'
-                );
-            }
-
-            if (
-                selectedEpisode >
-                0
-            ) {
-                var i;
-
-                for (
-                    i = 0;
-                    i <
-                    detail.episodes.length;
-                    i++
-                ) {
-                    if (
-                        detail
-                            .episodes[i]
-                            .number ===
-                            selectedEpisode &&
-                        detail
-                            .episodes[i]
-                            .href
-                    ) {
-                        return detail
-                            .episodes[i]
-                            .href;
-                    }
-                }
-            }
-
-            return absoluteUrl(
-                detail.href ||
-                item.href ||
-                '/'
-            );
-        }
-
-        function updateEpisodeSelection() {
-            root
-                .find(
-                    '.av40-episode'
+                $(
+                    '<div class="av41-status"></div>'
                 )
-                .each(
-                    function () {
-                        var el =
-                            $(
-                                this
-                            );
+                .text(
+                    message
+                )
+            );
 
-                        var number =
-                            safeInt(
-                                el.attr(
-                                    'data-episode'
-                                ),
-                                0
-                            );
 
-                        el.toggleClass(
-                            'selected',
-                            number ===
-                            selectedEpisode
-                        );
-                    }
+            nav.bind();
+
+
+            self.activity
+                .loader(
+                    false
                 );
         }
 
-        function renderDetail(
-            data
-        ) {
+
+        function renderDetail(data) {
             if (!alive) {
                 return;
             }
 
+
             detail =
                 data;
 
+
             root.empty();
+
 
             viewport[0]
                 .scrollTop =
                 0;
 
+
             var top =
                 $(
-                    '<div class="av40-detail-top"></div>'
+                    '<div class="av41-detail-top"></div>'
                 );
+
 
             top.append(
                 createPosterBox(
-                    'av40-detail-poster',
+                    'av41-detail-poster',
                     data.poster
                 )
             );
 
+
             var body =
                 $(
-                    '<div class="av40-detail-body"></div>'
+                    '<div class="av41-detail-body"></div>'
                 );
+
 
             body.append(
                 $(
-                    '<div class="av40-title"></div>'
+                    '<div class="av41-title"></div>'
                 )
                 .text(
                     data.title ||
@@ -3196,12 +4220,13 @@
                 )
             );
 
+
             if (
                 data.originalTitle
             ) {
                 body.append(
                     $(
-                        '<div class="av40-detail-original"></div>'
+                        '<div class="av41-detail-original"></div>'
                     )
                     .text(
                         data.originalTitle
@@ -3209,8 +4234,10 @@
                 );
             }
 
+
             var meta =
                 [];
+
 
             if (
                 data.year
@@ -3221,6 +4248,7 @@
                 );
             }
 
+
             if (
                 data.type
             ) {
@@ -3229,6 +4257,7 @@
                     data.type
                 );
             }
+
 
             if (
                 data.episodesText
@@ -3239,6 +4268,7 @@
                 );
             }
 
+
             if (
                 data.duration
             ) {
@@ -3247,6 +4277,7 @@
                     data.duration
                 );
             }
+
 
             if (
                 data.rating
@@ -3257,6 +4288,7 @@
                 );
             }
 
+
             if (
                 data.genre
             ) {
@@ -3265,6 +4297,7 @@
                     data.genre
                 );
             }
+
 
             if (
                 data.director
@@ -3275,9 +4308,10 @@
                 );
             }
 
+
             body.append(
                 $(
-                    '<div class="av40-detail-meta"></div>'
+                    '<div class="av41-detail-meta"></div>'
                 )
                 .text(
                     meta.join(
@@ -3286,9 +4320,10 @@
                 )
             );
 
+
             body.append(
                 $(
-                    '<div class="av40-detail-description"></div>'
+                    '<div class="av41-detail-description"></div>'
                 )
                 .text(
                     data.description ||
@@ -3296,49 +4331,79 @@
                 )
             );
 
+
+            /*
+             * Main player button.
+             */
+
             var actions =
                 $(
-                    '<div class="av40-actions"></div>'
+                    '<div class="av41-actions"></div>'
                 );
+
 
             var watch =
                 $(
-                    '<div class="av40-action selector">' +
-                        'Смотреть на AnimeVost' +
+                    '<div class="av41-action selector">' +
+                        '▶ Смотреть' +
                     '</div>'
                 );
+
 
             watch.on(
                 'hover:enter',
 
                 function () {
-                    openSitePage(
-                        watchTarget()
+                    if (
+                        !data.playerUrl
+                    ) {
+                        notify(
+                            'AnimeVost: ссылка встроенного плеера не найдена.'
+                        );
+
+                        return;
+                    }
+
+
+                    openEmbeddedPlayer(
+                        data.title ||
+                        item.title ||
+                        'AnimeVost',
+
+                        data.playerUrl,
+
+                        selectedEpisode
                     );
                 }
             );
+
 
             actions.append(
                 watch
             );
 
+
             body.append(
                 actions
             );
+
 
             top.append(
                 body
             );
 
+
             root.append(
                 top
             );
 
+
             root.append(
-                '<div class="av40-section-title">' +
+                '<div class="av41-section-title">' +
                     'Серии' +
                 '</div>'
             );
+
 
             if (
                 data.episodes &&
@@ -3346,14 +4411,15 @@
             ) {
                 var episodeGrid =
                     $(
-                        '<div class="av40-episodes"></div>'
+                        '<div class="av41-episodes"></div>'
                     );
+
 
                 data.episodes.forEach(
                     function (episode) {
                         var button =
                             $(
-                                '<div class="av40-episode selector"></div>'
+                                '<div class="av41-episode selector"></div>'
                             )
                             .attr(
                                 'data-episode',
@@ -3367,6 +4433,7 @@
                                 )
                             );
 
+
                         button.on(
                             'hover:enter',
 
@@ -3374,15 +4441,17 @@
                                 selectedEpisode =
                                     episode.number;
 
+
                                 updateEpisodeSelection();
+
 
                                 notify(
                                     'Выбрана серия ' +
-                                    episode.number +
-                                    '. Нажмите «Смотреть на AnimeVost».'
+                                    episode.number
                                 );
                             }
                         );
+
 
                         episodeGrid.append(
                             button
@@ -3390,33 +4459,55 @@
                     }
                 );
 
+
                 root.append(
                     episodeGrid
                 );
-
-                root.append(
-                    '<div class="av40-note">' +
-                        'Список серий берётся из текущей страницы AnimeVost. ' +
-                        'Если у серии есть отдельная ссылка, кнопка «Смотреть на AnimeVost» откроет её; ' +
-                        'иначе откроется обычная страница тайтла с веб-плеером сайта.' +
-                    '</div>'
-                );
             }
+
 
             else {
                 root.append(
-                    '<div class="av40-status">' +
+                    '<div class="av41-status">' +
                         'Список серий на странице не найден.' +
                     '</div>'
                 );
             }
 
+
+            root.append(
+                '<div class="av41-note">' +
+
+                    (
+                        data.playerUrl
+
+                            ? (
+                                'Найден встроенный плеер AnimeVost. ' +
+                                'Выберите серию и нажмите «Смотреть». ' +
+                                'Если URL плеера содержит параметр серии, ' +
+                                'плагин подставит выбранный номер автоматически; ' +
+                                'иначе выбор серии остаётся внутри самого плеера.'
+                            )
+
+                            : (
+                                'В HTML страницы не найден надёжный адрес ' +
+                                'встроенного плеера. Каталог и список серий ' +
+                                'продолжают работать.'
+                            )
+                    ) +
+
+                '</div>'
+            );
+
+
             nav.bind();
+
 
             self.activity
                 .loader(
                     false
                 );
+
 
             setTimeout(
                 function () {
@@ -3424,10 +4515,12 @@
                         return;
                     }
 
+
                     var selectors =
                         visibleSelectors(
                             root
                         );
+
 
                     if (
                         selectors.length
@@ -3441,79 +4534,41 @@
             );
         }
 
-        function renderError(
-            message
-        ) {
-            if (!alive) {
-                return;
-            }
-
-            root.empty();
-
-            root.append(
-                $(
-                    '<div class="av40-title"></div>'
-                )
-                .text(
-                    item.title ||
-                    'AnimeVost'
-                )
-            );
-
-            root.append(
-                $(
-                    '<div class="av40-status"></div>'
-                )
-                .text(
-                    message
-                )
-            );
-
-            var open =
-                $(
-                    '<div class="av40-action selector">' +
-                        'Открыть страницу AnimeVost' +
-                    '</div>'
-                );
-
-            open.on(
-                'hover:enter',
-
-                function () {
-                    openSitePage(
-                        item.href ||
-                        '/'
-                    );
-                }
-            );
-
-            root.append(
-                open
-            );
-
-            nav.bind();
-
-            self.activity
-                .loader(
-                    false
-                );
-        }
 
         this.create =
             function () {
                 alive =
                     true;
 
+
                 viewport.append(
                     root
                 );
 
-                renderLoading();
+
+                root.append(
+                    $(
+                        '<div class="av41-title"></div>'
+                    )
+                    .text(
+                        item.title ||
+                        'AnimeVost'
+                    )
+                );
+
+
+                root.append(
+                    '<div class="av41-status">' +
+                        'Загрузка страницы аниме...' +
+                    '</div>'
+                );
+
 
                 this.activity
                     .loader(
                         true
                     );
+
 
                 nav =
                     createNavigation(
@@ -3535,11 +4590,17 @@
                         }
                     );
 
+
                 var key =
                     toPath(
                         item.href ||
                         '/'
                     );
+
+
+                /*
+                 * Session cache.
+                 */
 
                 if (
                     DETAIL_CACHE[key]
@@ -3548,22 +4609,27 @@
                         DETAIL_CACHE[key]
                     );
 
+
                     return this.render();
                 }
+
 
                 network.timeout(
                     20000
                 );
+
 
                 network.silent(
                     workerUrl(
                         key
                     ),
 
+
                     function (html) {
                         if (!alive) {
                             return;
                         }
+
 
                         try {
                             var parsed =
@@ -3575,19 +4641,23 @@
                                     item
                                 );
 
+
                             DETAIL_CACHE[key] =
                                 parsed;
+
 
                             renderDetail(
                                 parsed
                             );
                         }
 
+
                         catch (error) {
                             console.log(
                                 'AnimeVost detail parse error',
                                 error
                             );
+
 
                             renderError(
                                 'Ошибка разбора страницы аниме: ' +
@@ -3601,13 +4671,16 @@
                         }
                     },
 
+
                     function (error) {
                         if (!alive) {
                             return;
                         }
 
+
                         var code =
                             '?';
+
 
                         try {
                             code =
@@ -3615,13 +4688,16 @@
                         }
                         catch (e) {}
 
+
                         renderError(
                             'Не удалось загрузить страницу аниме. Код: ' +
                             code
                         );
                     },
 
+
                     false,
+
 
                     {
                         dataType:
@@ -3629,8 +4705,10 @@
                     }
                 );
 
+
                 return this.render();
             };
+
 
         this.start =
             function () {
@@ -3643,6 +4721,7 @@
                     return;
                 }
 
+
                 Lampa.Controller.add(
                     'content',
 
@@ -3654,12 +4733,14 @@
                                         viewport
                                     );
 
+
                                 Lampa.Controller
                                     .collectionFocus(
                                         nav.getLast() ||
                                         false,
                                         viewport
                                     );
+
 
                                 if (
                                     nav.getLast()
@@ -3671,12 +4752,14 @@
                                 }
                             },
 
+
                         left:
                             function () {
                                 nav.move(
                                     'left'
                                 );
                             },
+
 
                         right:
                             function () {
@@ -3685,6 +4768,7 @@
                                 );
                             },
 
+
                         up:
                             function () {
                                 nav.move(
@@ -3692,12 +4776,14 @@
                                 );
                             },
 
+
                         down:
                             function () {
                                 nav.move(
                                     'down'
                                 );
                             },
+
 
                         back:
                             function () {
@@ -3707,46 +4793,62 @@
                     }
                 );
 
+
                 Lampa.Controller
                     .toggle(
                         'content'
                     );
             };
 
+
         this.pause =
             function () {};
 
+
         this.stop =
             function () {};
+
 
         this.render =
             function () {
                 return viewport;
             };
 
+
         this.destroy =
             function () {
                 alive =
                     false;
 
+
                 network.clear();
 
+
                 viewport.remove();
+
 
                 root.remove();
             };
     }
 
+
+
+    /* ============================================================
+       SIDE MENU
+       ============================================================ */
+
     function addMenuButton() {
         if (
             $(
-                '.menu .menu__list [data-action="' +
+                '.menu .menu__list ' +
+                '[data-action="' +
                 NS +
                 '"]'
             ).length
         ) {
             return;
         }
+
 
         var button =
             $(
@@ -3781,6 +4883,7 @@
                 '</li>'
             );
 
+
         button.on(
             'hover:enter',
 
@@ -3792,12 +4895,19 @@
             }
         );
 
+
         $('.menu .menu__list')
             .eq(0)
             .append(
                 button
             );
     }
+
+
+
+    /* ============================================================
+       INITIALISE PLUGIN
+       ============================================================ */
 
     function init() {
         if (
@@ -3806,11 +4916,14 @@
             return;
         }
 
+
         window[FLAG] =
             true;
 
+
         try {
             injectStyle();
+
 
             if (
                 !Lampa.Component
@@ -3825,6 +4938,7 @@
                     );
             }
 
+
             if (
                 !Lampa.Component
                     .get(
@@ -3838,30 +4952,37 @@
                     );
             }
 
+
             addMenuButton();
 
+
             notify(
-                'AnimeVost V0.4 загружен'
+                'AnimeVost V0.4.1 загружен'
             );
         }
+
 
         catch (error) {
             console.log(
-                'AnimeVost V0.4 init error',
+                'AnimeVost V0.4.1 init error',
                 error
             );
 
+
             notify(
-                'Ошибка запуска AnimeVost V0.4'
+                'Ошибка запуска AnimeVost V0.4.1'
             );
         }
     }
+
+
 
     if (
         window.appready
     ) {
         init();
     }
+
 
     else {
         Lampa.Listener.follow(
