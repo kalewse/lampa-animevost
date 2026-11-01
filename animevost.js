@@ -8,12 +8,14 @@
   var DETAIL = NS + '_detail';
   var CLEAN_PLAYER = NS + '_clean_player';
   var RECENT_KEY = NS + '_recent';
+  var ACCESS_KEY_STORAGE = 'animevost_access_key';
 
   var WORKER = 'https://animevost-lampa.kalewse69.workers.dev/';
   var ORIGIN = 'https://animevost.org';
 
   var detailCache = {};
   var playerSession = null;
+  var accessPromptOpen = false;
 
   /* -------------------------------------------------------
    * Basics
@@ -106,6 +108,326 @@
     );
   }
 
+  /* -------------------------------------------------------
+   * Private access code
+   * ----------------------------------------------------- */
+
+  function getAccessKey() {
+    try {
+      return clean(
+        Lampa.Storage.get(
+          ACCESS_KEY_STORAGE,
+          ''
+        ) ||
+        ''
+      );
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function setAccessKey(value) {
+    try {
+      Lampa.Storage.set(
+        ACCESS_KEY_STORAGE,
+        clean(
+          value ||
+          ''
+        )
+      );
+    } catch (e) {}
+  }
+
+  function clearAccessKey() {
+    try {
+      Lampa.Storage.set(
+        ACCESS_KEY_STORAGE,
+        ''
+      );
+    } catch (e) {}
+  }
+
+  function authUrl(accessKey) {
+    return (
+      WORKER +
+      '__animevost_auth' +
+      '?access_key=' +
+      encodeURIComponent(
+        accessKey ||
+        ''
+      ) +
+      '&_=' +
+      Date.now()
+    );
+  }
+
+  function validateAccessKey(
+    accessKey,
+    callback
+  ) {
+    var network =
+      new Lampa.Reguest();
+
+    network.timeout(
+      15000
+    );
+
+    network.silent(
+      authUrl(
+        accessKey
+      ),
+
+      function () {
+        try {
+          network.clear();
+        } catch (e) {}
+
+        callback(
+          true,
+          200
+        );
+      },
+
+      function (error) {
+        var status =
+          error &&
+          error.status
+            ? error.status
+            : 0;
+
+        try {
+          network.clear();
+        } catch (e) {}
+
+        callback(
+          false,
+          status
+        );
+      },
+
+      false,
+
+      {
+        dataType:
+          'text'
+      }
+    );
+  }
+
+  function promptAccessCode(callback) {
+    if (
+      accessPromptOpen
+    ) {
+      return;
+    }
+
+    if (
+      !Lampa.Input ||
+      typeof Lampa.Input.edit !==
+      'function'
+    ) {
+      notify(
+        'Не удалось открыть ввод кода доступа'
+      );
+
+      return;
+    }
+
+    accessPromptOpen =
+      true;
+
+    try {
+      Lampa.Input.edit(
+        {
+          title:
+            'Код доступа AnimeVost',
+
+          value:
+            '',
+
+          free:
+            true,
+
+          nosave:
+            true
+        },
+
+        function (result) {
+          accessPromptOpen =
+            false;
+
+          var value =
+            result;
+
+          if (
+            result &&
+            typeof result ===
+            'object' &&
+            typeof result.value !==
+            'undefined'
+          ) {
+            value =
+              result.value;
+          }
+
+          var accessKey =
+            clean(
+              value ||
+              ''
+            );
+
+          if (
+            !accessKey
+          ) {
+            notify(
+              'Код доступа не введён'
+            );
+
+            return;
+          }
+
+          validateAccessKey(
+            accessKey,
+
+            function (
+              valid,
+              status
+            ) {
+              if (
+                valid
+              ) {
+                setAccessKey(
+                  accessKey
+                );
+
+                notify(
+                  'Код доступа сохранён'
+                );
+
+                if (
+                  typeof callback ===
+                  'function'
+                ) {
+                  callback();
+                }
+
+                return;
+              }
+
+              clearAccessKey();
+
+              if (
+                status ===
+                503
+              ) {
+                notify(
+                  'Cloudflare: ANIMEVOST_ACCESS_KEY не настроен'
+                );
+
+                return;
+              }
+
+              if (
+                status ===
+                403
+              ) {
+                notify(
+                  'Неверный код доступа'
+                );
+
+                setTimeout(
+                  function () {
+                    promptAccessCode(
+                      callback
+                    );
+                  },
+                  250
+                );
+
+                return;
+              }
+
+              notify(
+                'Не удалось проверить код доступа' +
+                (
+                  status
+                    ? ' • ' + status
+                    : ''
+                )
+              );
+            }
+          );
+        }
+      );
+    } catch (error) {
+      accessPromptOpen =
+        false;
+
+      console.log(
+        'AnimeVost access input error',
+        error
+      );
+
+      notify(
+        'Не удалось открыть ввод кода доступа'
+      );
+    }
+  }
+
+  function ensureAccess(callback) {
+    var savedKey =
+      getAccessKey();
+
+    if (
+      !savedKey
+    ) {
+      promptAccessCode(
+        callback
+      );
+
+      return;
+    }
+
+    validateAccessKey(
+      savedKey,
+
+      function (
+        valid,
+        status
+      ) {
+        if (
+          valid
+        ) {
+          if (
+            typeof callback ===
+            'function'
+          ) {
+            callback();
+          }
+
+          return;
+        }
+
+        clearAccessKey();
+
+        if (
+          status ===
+          503
+        ) {
+          notify(
+            'Cloudflare: ANIMEVOST_ACCESS_KEY не настроен'
+          );
+
+          return;
+        }
+
+        promptAccessCode(
+          callback
+        );
+      }
+    );
+  }
+
   function apiUrl(path) {
     return (
       WORKER +
@@ -115,6 +437,10 @@
           path ||
           '/'
         )
+      ) +
+      '&access_key=' +
+      encodeURIComponent(
+        getAccessKey()
       )
     );
   }
@@ -148,6 +474,11 @@
       encodeURIComponent(
         episode ||
         0
+      ) +
+
+      '&access_key=' +
+      encodeURIComponent(
+        getAccessKey()
       ) +
 
       '&_=' +
@@ -277,10 +608,6 @@
         toPath(path)
       );
   }
-
-  /* -------------------------------------------------------
-   * AnimeVost parsing
-   * ----------------------------------------------------- */
 
   function findArticleContainer(node) {
     var current =
@@ -1233,10 +1560,6 @@
     };
   }
 
-  /* -------------------------------------------------------
-   * Local recent / continue shelf
-   * ----------------------------------------------------- */
-
   function recentItems() {
     try {
       var list =
@@ -1355,10 +1678,6 @@
       );
     } catch (e) {}
   }
-
-  /* -------------------------------------------------------
-   * Styling
-   * ----------------------------------------------------- */
 
   function injectStyle() {
     if (
@@ -1897,9 +2216,6 @@
         'color:#535b66;' +
       '}' +
 
-      /*
-       * Player shell exactly from the old working V0.7.2.
-       */
       '.av72-player{' +
         'position:fixed;' +
         'left:0;' +
@@ -1974,10 +2290,6 @@
       '</style>'
     );
   }
-
-  /* -------------------------------------------------------
-   * Common UI helpers
-   * ----------------------------------------------------- */
 
   function posterImage(
     url,
@@ -2896,11 +3208,7 @@
     return card;
   }
 
-  /* -------------------------------------------------------
-   * Navigation actions / search
-   * ----------------------------------------------------- */
-
-  function openHome() {
+  function openHomeUnlocked() {
     Lampa.Activity.push(
       {
         url:
@@ -2915,6 +3223,12 @@
         page:
           1
       }
+    );
+  }
+
+  function openHome() {
+    ensureAccess(
+      openHomeUnlocked
     );
   }
 
@@ -3102,10 +3416,6 @@
       );
     }
   }
-
-  /* -------------------------------------------------------
-   * Old V0.7.2 clean player shell
-   * ----------------------------------------------------- */
 
   function sendPlayerKey(
     key
@@ -3488,7 +3798,7 @@
       function () {
         if (
           playerSession ===
-          session &&
+            session &&
           !session.ready
         ) {
           status.text(
@@ -3499,10 +3809,6 @@
       7000
     );
   }
-
-  /* -------------------------------------------------------
-   * HOME
-   * ----------------------------------------------------- */
 
   function HomeComponent(object) {
     var network =
@@ -4215,10 +4521,6 @@
       };
   }
 
-  /* -------------------------------------------------------
-   * Catalog / Search
-   * ----------------------------------------------------- */
-
   function CatalogComponent(object) {
     var network =
       new Lampa.Reguest();
@@ -4676,10 +4978,6 @@
       };
   }
 
-  /* -------------------------------------------------------
-   * Detail
-   * ----------------------------------------------------- */
-
   function DetailComponent(object) {
     var network =
       new Lampa.Reguest();
@@ -4863,9 +5161,6 @@
       var watch =
         $('<div class="av80-action primary selector">▶ Смотреть</div>');
 
-      /*
-       * EXACT old working V0.7.2 Watch logic.
-       */
       watch.on(
         'hover:enter',
 
@@ -5240,13 +5535,6 @@
                 );
               },
 
-            /*
-             * LG fallback for the new visual layout.
-             *
-             * This does not replace the old Watch logic.
-             * It simply sends the same hover:enter event
-             * to whichever selector currently has focus.
-             */
             enter:
               function () {
                 var focused =
@@ -5302,10 +5590,6 @@
         root.remove();
       };
   }
-
-  /* -------------------------------------------------------
-   * Menu + boot
-   * ----------------------------------------------------- */
 
   function addMenuButton() {
     if (
@@ -5382,16 +5666,16 @@
       addMenuButton();
 
       notify(
-        'AnimeVost V0.8.4 • Old Watch + Stable Player загружен'
+        'AnimeVost V0.8.7 • Access Code + Stable Player загружен'
       );
     } catch (error) {
       console.log(
-        'AnimeVost V0.8.4 init error',
+        'AnimeVost V0.8.7 init error',
         error
       );
 
       notify(
-        'Ошибка запуска AnimeVost V0.8.4'
+        'Ошибка запуска AnimeVost V0.8.7'
       );
     }
   }
