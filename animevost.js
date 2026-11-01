@@ -1,20 +1,25 @@
 (function () {
   'use strict';
 
+
   var NS =
-    'animevost_v070';
+    'animevost_v072';
+
 
   var FLAG =
     NS +
     '_ready';
 
+
   var CATALOG =
     NS +
     '_catalog';
 
+
   var DETAIL =
     NS +
     '_detail';
+
 
   var CLEAN_PLAYER =
     NS +
@@ -24,12 +29,14 @@
   var WORKER =
     'https://animevost-lampa.kalewse69.workers.dev/';
 
+
   var ORIGIN =
     'https://animevost.org';
 
 
   var detailCache =
     {};
+
 
   var playerSession =
     null;
@@ -193,6 +200,7 @@
         '/'
 
           ? value
+
           : '/' + value
       )
     );
@@ -203,6 +211,7 @@
     path
   ) {
     return (
+
       WORKER +
 
       '?path=' +
@@ -217,10 +226,17 @@
   }
 
 
+  /*
+   * New V0.7.2 clean-player URL:
+   *
+   * episode only.
+   *
+   * No mandatory Player №1/№2 because the LG diagnostic
+   * proved the Ao Ashi page has zero such DOM buttons.
+   */
   function cleanPlayerUrl(
     path,
-    episode,
-    player
+    episode
   ) {
     var cleanPath =
       toPath(
@@ -249,12 +265,6 @@
       encodeURIComponent(
         episode ||
         0
-      ) +
-
-      '&player=' +
-      encodeURIComponent(
-        player ||
-        1
       ) +
 
       '&_=' +
@@ -298,6 +308,7 @@
         node.textContent
 
           ? node.textContent
+
           : ''
       );
     }
@@ -328,16 +339,22 @@
 
 
     var best =
+
       node &&
       node.parentElement
 
         ? node.parentElement
+
         : node;
 
 
+    var i;
+
+
     for (
-      var i = 0;
-      i < 8 &&
+      i = 0;
+      i <
+      8 &&
       current;
       i++
     ) {
@@ -444,10 +461,12 @@
     ) {
       if (
         toPath(
+
           links[i]
             .getAttribute(
               'href'
             ) ||
+
           ''
         ) ===
         wanted
@@ -463,6 +482,7 @@
           image
         ) {
           var source =
+
             image
               .getAttribute(
                 'data-src'
@@ -502,6 +522,7 @@
       i++
     ) {
       var src =
+
         images[i]
           .getAttribute(
             'data-src'
@@ -517,10 +538,12 @@
 
       var alt =
         clean(
+
           images[i]
             .getAttribute(
               'alt'
             ) ||
+
           ''
         );
 
@@ -561,12 +584,11 @@
 
 
   /*
-   * Important change:
+   * Prefer the explicit AnimeVost "Смотреть" anchor.
    *
-   * Prefer AnimeVost's explicit "Смотреть" link
-   * from the card as canonical player/title page.
+   * Your desktop inspector confirmed this is the canonical
+   * dedicated anime page URL.
    */
-
   function findWatchHref(
     container,
     fallbackHref
@@ -588,13 +610,16 @@
         );
 
 
+    var i;
+
+
     for (
-      var i = 0;
+      i = 0;
       i <
       links.length;
       i++
     ) {
-      var label =
+      var title =
         clean(
           links[i]
             .textContent ||
@@ -604,10 +629,12 @@
 
       var href =
         toPath(
+
           links[i]
             .getAttribute(
               'href'
             ) ||
+
           ''
         );
 
@@ -615,7 +642,7 @@
       if (
         /^смотреть$/i
           .test(
-            label
+            title
           ) &&
 
         isAnimePath(
@@ -659,6 +686,9 @@
         .querySelectorAll(
           'a[href]'
         );
+
+
+    var i;
 
 
     function add(
@@ -719,17 +749,19 @@
 
 
     for (
-      var i = 0;
+      i = 0;
       i <
       anchors.length;
       i++
     ) {
       var href =
         toPath(
+
           anchors[i]
             .getAttribute(
               'href'
             ) ||
+
           ''
         );
 
@@ -828,10 +860,12 @@
 
 
     return match
+
       ? toInt(
           match[1],
           1
         )
+
       : 1;
   }
 
@@ -861,7 +895,9 @@
       '/'
     )
       ? cleanPath
-      : cleanPath + '/';
+
+      : cleanPath +
+        '/';
   }
 
 
@@ -880,6 +916,7 @@
       1
     )
       ? base
+
       : (
           base +
           'page/' +
@@ -910,18 +947,23 @@
         );
 
 
+    var i;
+
+
     for (
-      var i = 0;
+      i = 0;
       i <
       anchors.length;
       i++
     ) {
       var href =
         toPath(
+
           anchors[i]
             .getAttribute(
               'href'
             ) ||
+
           ''
         );
 
@@ -937,6 +979,7 @@
       ) {
         max =
           Math.max(
+
             max,
 
             toInt(
@@ -956,6 +999,7 @@
         max,
 
       previous:
+
         current >
         1
 
@@ -968,6 +1012,7 @@
           : '',
 
       next:
+
         max >
         current
 
@@ -1008,6 +1053,7 @@
     ) {
       best =
         Math.max(
+
           best,
 
           toInt(
@@ -1054,8 +1100,11 @@
       {};
 
 
+    var i;
+
+
     for (
-      var i = 0;
+      i = 0;
       i <
       headings.length;
       i++
@@ -1066,10 +1115,12 @@
 
       var href =
         toPath(
+
           anchor
             .getAttribute(
               'href'
             ) ||
+
           ''
         );
 
@@ -1086,7 +1137,9 @@
         !isAnimePath(
           href
         ) ||
+
         !title ||
+
         seen[href]
       ) {
         continue;
@@ -1099,6 +1152,7 @@
 
       var container =
         findArticleContainer(
+
           anchor.parentElement ||
           anchor
         );
@@ -1261,6 +1315,7 @@
 
     max =
       Math.max(
+
         0,
 
         Math.min(
@@ -1274,9 +1329,13 @@
       [];
 
 
+    var i;
+
+
     for (
-      var i = 1;
-      i <= max;
+      i = 1;
+      i <=
+      max;
       i++
     ) {
       result.push(
@@ -1355,6 +1414,7 @@
       !title
     ) {
       title =
+
         clean(
           doc.title ||
           ''
@@ -1448,13 +1508,16 @@
         title,
 
       href:
+
         item &&
         item.href
 
           ? item.href
+
           : '/',
 
       watchHref:
+
         item &&
         item.watchHref
 
@@ -1465,10 +1528,12 @@
               item.href
 
                 ? item.href
+
                 : '/'
             ),
 
       poster:
+
         item &&
         item.poster
 
@@ -1518,7 +1583,7 @@
   function injectStyle() {
     if (
       $(
-        '#animevost-v070-style'
+        '#animevost-v072-style'
       ).length
     ) {
       return;
@@ -1528,9 +1593,9 @@
     $('head')
       .append(
 
-        '<style id="animevost-v070-style">' +
+        '<style id="animevost-v072-style">' +
 
-        '.av70-v{' +
+        '.av72-v{' +
           'height:calc(100vh - 6.2em);' +
           'overflow-y:auto;' +
           'overflow-x:hidden;' +
@@ -1538,358 +1603,241 @@
           '-webkit-overflow-scrolling:touch' +
         '}' +
 
-        '.av70-v::-webkit-scrollbar{' +
+        '.av72-v::-webkit-scrollbar{' +
           'width:0;' +
           'height:0' +
         '}' +
 
-        '.av70-p{' +
+        '.av72-p{' +
           'padding:1.3em 2.2em 5em;' +
           'box-sizing:border-box' +
         '}' +
 
-        '.av70-title{' +
+        '.av72-title{' +
           'font-size:2em;' +
           'font-weight:600;' +
           'margin:.2em 0 .75em;' +
           'line-height:1.15' +
         '}' +
 
-        '.av70-row,' +
-        '.av70-grid,' +
-        '.av70-pages,' +
-        '.av70-actions,' +
-        '.av70-eps{' +
-
+        '.av72-row,' +
+        '.av72-grid,' +
+        '.av72-pages,' +
+        '.av72-actions,' +
+        '.av72-eps{' +
           'display:flex;' +
           'flex-wrap:wrap;' +
           'align-items:flex-start' +
-
         '}' +
 
-        '.av70-row{' +
+        '.av72-row{' +
           'margin-bottom:1.2em' +
         '}' +
 
-        '.av70-btn,' +
-        '.av70-pagebtn,' +
-        '.av70-action,' +
-        '.av70-ep{' +
-
+        '.av72-btn,' +
+        '.av72-pagebtn,' +
+        '.av72-action,' +
+        '.av72-ep{' +
           'padding:.7em 1.05em;' +
-
           'margin:0 .55em .55em 0;' +
-
           'background:rgba(255,255,255,.10);' +
-
           'border-radius:.45em;' +
-
           'font-size:1.05em;' +
-
           'box-sizing:border-box' +
-
         '}' +
 
-        '.av70-btn.focus,' +
-        '.av70-pagebtn.focus,' +
-        '.av70-action.focus,' +
-        '.av70-ep.focus,' +
-        '.av70-close.focus{' +
-
+        '.av72-btn.focus,' +
+        '.av72-pagebtn.focus,' +
+        '.av72-action.focus,' +
+        '.av72-ep.focus,' +
+        '.av72-close.focus{' +
           'background:#fff;' +
           'color:#111' +
-
         '}' +
 
-        '.av70-status{' +
+        '.av72-status{' +
           'padding:1.2em 0;' +
           'font-size:1.15em;' +
           'opacity:.8' +
         '}' +
 
-        '.av70-card{' +
-
+        '.av72-card{' +
           'width:12.2em;' +
-
           'margin:0 1.05em 1.3em 0;' +
-
           'border-radius:.55em;' +
-
           'padding:.45em;' +
-
           'background:rgba(255,255,255,.04);' +
-
           'box-sizing:border-box' +
-
         '}' +
 
-        '.av70-card.focus{' +
+        '.av72-card.focus{' +
           'background:rgba(255,255,255,.18);' +
           'transform:scale(1.025)' +
         '}' +
 
-        '.av70-poster{' +
-
+        '.av72-poster{' +
           'width:100%;' +
-
           'height:17.4em;' +
-
           'border-radius:.4em;' +
-
           'overflow:hidden;' +
-
           'background:rgba(255,255,255,.08);' +
-
           'display:flex;' +
-
           'align-items:center;' +
-
           'justify-content:center' +
-
         '}' +
 
-        '.av70-poster img,' +
-        '.av70-dposter img{' +
-
+        '.av72-poster img,' +
+        '.av72-dposter img{' +
           'width:100%;' +
           'height:100%;' +
           'object-fit:cover;' +
           'display:block' +
-
         '}' +
 
-        '.av70-fallback{' +
-
+        '.av72-fallback{' +
           'font-size:1em;' +
           'opacity:.55;' +
           'text-align:center;' +
           'padding:1em' +
-
         '}' +
 
-        '.av70-name{' +
-
+        '.av72-name{' +
           'font-size:1.03em;' +
-
           'line-height:1.25;' +
-
           'margin-top:.6em;' +
-
           'min-height:2.5em' +
-
         '}' +
 
-        '.av70-meta{' +
-
+        '.av72-meta{' +
           'font-size:.83em;' +
-
           'line-height:1.3;' +
-
           'opacity:.62;' +
-
           'margin-top:.35em;' +
-
           'min-height:2.1em' +
-
         '}' +
 
-        '.av70-pages{' +
-
+        '.av72-pages{' +
           'margin-top:.4em;' +
-
           'padding-bottom:1em' +
-
         '}' +
 
-        '.av70-dtop{' +
-
+        '.av72-dtop{' +
           'display:flex;' +
-
           'align-items:flex-start;' +
-
           'margin-bottom:1.4em' +
-
         '}' +
 
-        '.av70-dposter{' +
-
+        '.av72-dposter{' +
           'width:15em;' +
-
           'min-width:15em;' +
-
           'height:21em;' +
-
           'margin-right:2em;' +
-
           'overflow:hidden;' +
-
           'border-radius:.55em;' +
-
           'background:rgba(255,255,255,.08)' +
-
         '}' +
 
-        '.av70-dbody{' +
+        '.av72-dbody{' +
           'max-width:68em' +
         '}' +
 
-        '.av70-dmeta{' +
-
+        '.av72-dmeta{' +
           'font-size:1.04em;' +
-
           'line-height:1.55;' +
-
           'opacity:.78;' +
-
           'margin-bottom:1em' +
-
         '}' +
 
-        '.av70-desc{' +
+        '.av72-desc{' +
           'font-size:1.05em;' +
           'line-height:1.55' +
         '}' +
 
-        '.av70-actions{' +
+        '.av72-actions{' +
           'margin:1.25em 0 1.3em' +
         '}' +
 
-        '.av70-primary{' +
+        '.av72-primary{' +
           'background:rgba(255,255,255,.18)' +
         '}' +
 
-        '.av70-section{' +
-
+        '.av72-section{' +
           'font-size:1.45em;' +
-
           'font-weight:600;' +
-
           'margin:1.2em 0 .75em' +
-
         '}' +
 
-        '.av70-ep{' +
-
+        '.av72-ep{' +
           'min-width:7.3em;' +
-
           'text-align:center' +
-
         '}' +
 
-        '.av70-ep.selected{' +
-
+        '.av72-ep.selected{' +
           'box-shadow:' +
-          'inset 0 0 0 .16em rgba(255,255,255,.65)' +
-
+            'inset 0 0 0 .16em rgba(255,255,255,.65)' +
         '}' +
 
-        '.av70-note{' +
-
+        '.av72-note{' +
           'margin-top:1.2em;' +
-
           'padding:1em 1.15em;' +
-
           'background:rgba(255,255,255,.07);' +
-
           'border-radius:.45em;' +
-
           'opacity:.72;' +
-
           'font-size:.96em;' +
-
           'line-height:1.45' +
-
         '}' +
 
-        '.av70-player{' +
-
+        '.av72-player{' +
           'position:fixed;' +
-
           'left:0;' +
           'top:0;' +
           'right:0;' +
           'bottom:0;' +
-
           'background:#000;' +
-
           'z-index:999999;' +
-
           'display:flex;' +
-
           'flex-direction:column' +
-
         '}' +
 
-        '.av70-playerbar{' +
-
+        '.av72-playerbar{' +
           'height:3.4em;' +
-
           'min-height:3.4em;' +
-
           'background:#111;' +
-
           'display:flex;' +
-
           'align-items:center;' +
-
           'padding:0 1em;' +
-
           'box-sizing:border-box' +
-
         '}' +
 
-        '.av70-playertitle{' +
-
+        '.av72-playertitle{' +
           'font-size:1em;' +
-
           'white-space:nowrap;' +
-
           'overflow:hidden;' +
-
           'text-overflow:ellipsis;' +
-
           'flex:1;' +
-
           'padding-right:1em' +
-
         '}' +
 
-        '.av70-playerstatus{' +
-
+        '.av72-playerstatus{' +
           'font-size:.8em;' +
-
           'opacity:.72;' +
-
           'margin-right:1em;' +
-
           'white-space:nowrap' +
-
         '}' +
 
-        '.av70-close{' +
-
+        '.av72-close{' +
           'padding:.48em .72em;' +
-
           'border-radius:.35em;' +
-
           'background:rgba(255,255,255,.14);' +
-
           'white-space:nowrap' +
-
         '}' +
 
-        '.av70-player iframe{' +
-
+        '.av72-player iframe{' +
           'width:100%;' +
-
           'height:calc(100% - 3.4em);' +
-
           'border:0;' +
-
-          'background:#111;' +
-
+          'background:#000;' +
           'display:block' +
-
         '}' +
 
         '</style>'
@@ -1913,7 +1861,7 @@
       !url
     ) {
       box.append(
-        '<div class="av70-fallback">' +
+        '<div class="av72-fallback">' +
         'AnimeVost' +
         '</div>'
       );
@@ -1938,7 +1886,7 @@
         box
           .empty()
           .append(
-            '<div class="av70-fallback">' +
+            '<div class="av72-fallback">' +
             'AnimeVost' +
             '</div>'
           );
@@ -2204,8 +2152,11 @@
       Infinity;
 
 
+    var i;
+
+
     for (
-      var i = 0;
+      i = 0;
       i <
       items.length;
       i++
@@ -2374,6 +2325,7 @@
 
 
       var r;
+
       var c;
 
 
@@ -2435,6 +2387,7 @@
           0
         ) {
           return focus(
+
             rows[
               rowIndex
             ]
@@ -2472,6 +2425,7 @@
           1
         ) {
           return focus(
+
             rows[
               rowIndex
             ]
@@ -2496,6 +2450,7 @@
           0
         ) {
           return focus(
+
             nearest(
 
               rows[
@@ -2532,6 +2487,7 @@
           1
         ) {
           return focus(
+
             nearest(
 
               rows[
@@ -2582,7 +2538,6 @@
 
 
     return {
-
       focus:
         focus,
 
@@ -2600,6 +2555,13 @@
   }
 
 
+  /*
+   * Fallback commands from Lampa to the clean page.
+   *
+   * Once frame5.php is ready, real LG focus will be
+   * transferred into the iframe and its own capture
+   * listener handles the physical key.
+   */
   function sendPlayerKey(
     key
   ) {
@@ -2620,7 +2582,7 @@
 
           {
             source:
-              'animevost-clean-host-v070',
+              'animevost-clean-host-v072',
 
             type:
               'key',
@@ -2691,38 +2653,36 @@
 
 
   /*
-   * Opens CLEAN AnimeVost page.
+   * V0.7.2:
    *
-   * The Worker hides everything except:
+   * One clean Watch action.
    *
-   * - episode buttons
-   * - player buttons
-   * - video
+   * The selected episode is passed to the Worker helper.
+   * Any alternate-player controls AnimeVost genuinely creates
+   * stay visible inside #playerbox automatically.
    */
-
   function openCleanPlayer(
     item,
-    episode,
-    player
+    episode
   ) {
     closeCleanPlayer();
 
 
     var overlay =
       $(
-        '<div class="av70-player"></div>'
+        '<div class="av72-player"></div>'
       );
 
 
     var bar =
       $(
-        '<div class="av70-playerbar"></div>'
+        '<div class="av72-playerbar"></div>'
       );
 
 
     var title =
       $(
-        '<div class="av70-playertitle"></div>'
+        '<div class="av72-playertitle"></div>'
       )
       .text(
 
@@ -2733,21 +2693,19 @@
 
         (
           episode
+
             ? ' • ' +
               episode +
               ' серия'
 
             : ''
-        ) +
-
-        ' • Плеер №' +
-        player
+        )
       );
 
 
     var status =
       $(
-        '<div class="av70-playerstatus">' +
+        '<div class="av72-playerstatus">' +
         'Загрузка чистого плеера...' +
         '</div>'
       );
@@ -2755,7 +2713,7 @@
 
     var close =
       $(
-        '<div class="av70-close selector">' +
+        '<div class="av72-close selector">' +
         'Back — назад' +
         '</div>'
       );
@@ -2763,6 +2721,7 @@
 
     var frame =
       $(
+
         '<iframe ' +
         'tabindex="0" ' +
         'allow="autoplay; fullscreen; picture-in-picture" ' +
@@ -2778,9 +2737,7 @@
           item.watchHref ||
           item.href,
 
-          episode,
-
-          player
+          episode
         )
       );
 
@@ -2829,6 +2786,12 @@
       ready:
         false,
 
+      isolated:
+        false,
+
+      playerReady:
+        false,
+
       messageHandler:
         null
     };
@@ -2849,7 +2812,7 @@
 
         if (
           data.source !==
-          'animevost-clean-v070'
+          'animevost-clean-v072'
         ) {
           return;
         }
@@ -2864,7 +2827,21 @@
 
 
           status.text(
-            'Подготавливаю серии и плеер...'
+            'Ищу #playerbox и серию...'
+          );
+        }
+
+
+        else if (
+          data.type ===
+          'isolated'
+        ) {
+          session.isolated =
+            true;
+
+
+          status.text(
+            'Чистый #playerbox готов • выбираю серию...'
           );
         }
 
@@ -2874,31 +2851,10 @@
           'episode-selected'
         ) {
           status.text(
+
             'Серия ' +
             data.number +
-            ' выбрана...'
-          );
-        }
-
-
-        else if (
-          data.type ===
-          'player-selected'
-        ) {
-          status.text(
-            'Плеер №' +
-            data.number +
-            ' выбран...'
-          );
-        }
-
-
-        else if (
-          data.type ===
-          'isolated'
-        ) {
-          status.text(
-            'Лишние элементы скрыты • загружаю видео...'
+            ' выбрана • загружаю видео...'
           );
         }
 
@@ -2907,32 +2863,26 @@
           data.type ===
           'player-ready'
         ) {
+          session.playerReady =
+            true;
+
+
           status.text(
 
-            (
-              data.api
+            'Видео готово' +
 
-                ? 'PlayerJS готов'
+            ' • OK play/pause' +
 
-                : (
-                    data.video
+            ' • ←/→ 10 сек' +
 
-                      ? 'HTML5 video готово'
-                      : 'Плеер готов'
-                  )
-            ) +
+            ' • ↑ к сериям' +
 
-            ' • OK play/pause • ←/→ 10 сек • Back назад'
+            ' • Back назад'
           );
 
 
-          /*
-           * Helper is already installed before this.
-           * Now it is safe to let the clean page receive
-           * the real TV key events.
-           */
-
           setTimeout(
+
             function () {
               if (
                 playerSession ===
@@ -2948,6 +2898,16 @@
             },
 
             80
+          );
+        }
+
+
+        else if (
+          data.type ===
+          'clean-error'
+        ) {
+          status.text(
+            'Не удалось подготовить чистый плеер • Back назад'
           );
         }
 
@@ -2975,12 +2935,10 @@
 
 
     /*
-     * Lampa retains a full fallback controller.
-     *
-     * If iframe is not focused yet,
-     * these commands are forwarded with postMessage.
+     * Official Lampa handler names:
+     * enter / playpause / play / pause /
+     * rewindBack / rewindForward / back.
      */
-
     Lampa.Controller.add(
 
       CLEAN_PLAYER,
@@ -3050,6 +3008,22 @@
           },
 
 
+        play:
+          function () {
+            sendPlayerKey(
+              'play'
+            );
+          },
+
+
+        pause:
+          function () {
+            sendPlayerKey(
+              'pause'
+            );
+          },
+
+
         rewindBack:
           function () {
             sendPlayerKey(
@@ -3084,10 +3058,11 @@
         if (
           playerSession ===
             session &&
+
           !session.ready
         ) {
           status.text(
-            'TV helper не ответил • Back безопасно закрывает окно'
+            'Helper не ответил • Back безопасно закрывает окно'
           );
         }
       },
@@ -3165,6 +3140,7 @@
         'AnimeVost: список не найден'
       );
 
+
       return;
     }
 
@@ -3224,13 +3200,13 @@
 
     var viewport =
       $(
-        '<div class="av70-v"></div>'
+        '<div class="av72-v"></div>'
       );
 
 
     var root =
       $(
-        '<div class="av70-p"></div>'
+        '<div class="av72-p"></div>'
       );
 
 
@@ -3267,7 +3243,7 @@
     function addTopNavigation() {
       var row =
         $(
-          '<div class="av70-row"></div>'
+          '<div class="av72-row"></div>'
         );
 
 
@@ -3277,7 +3253,7 @@
       ) {
         var button =
           $(
-            '<div class="av70-btn selector"></div>'
+            '<div class="av72-btn selector"></div>'
           )
           .text(
             label
@@ -3380,13 +3356,13 @@
     ) {
       var card =
         $(
-          '<div class="av70-card selector"></div>'
+          '<div class="av72-card selector"></div>'
         );
 
 
       card.append(
         posterBox(
-          'av70-poster',
+          'av72-poster',
           item.poster
         )
       );
@@ -3394,7 +3370,7 @@
 
       card.append(
         $(
-          '<div class="av70-name"></div>'
+          '<div class="av72-name"></div>'
         )
         .text(
           item.title
@@ -3428,6 +3404,7 @@
         item.episodes
       ) {
         meta.push(
+
           item.episodes
             .replace(
               /\s*\([^)]*\)\s*$/,
@@ -3439,7 +3416,7 @@
 
       card.append(
         $(
-          '<div class="av70-meta"></div>'
+          '<div class="av72-meta"></div>'
         )
         .text(
           meta.join(
@@ -3482,7 +3459,7 @@
 
       var row =
         $(
-          '<div class="av70-pages"></div>'
+          '<div class="av72-pages"></div>'
         );
 
 
@@ -3491,9 +3468,10 @@
       ) {
         var previous =
           $(
-            '<div class="av70-pagebtn selector"></div>'
+            '<div class="av72-pagebtn selector"></div>'
           )
           .text(
+
             '← Страница ' +
             (
               data.current -
@@ -3522,7 +3500,7 @@
 
       row.append(
         $(
-          '<div class="av70-pagebtn"></div>'
+          '<div class="av72-pagebtn"></div>'
         )
         .text(
 
@@ -3547,7 +3525,7 @@
       ) {
         var next =
           $(
-            '<div class="av70-pagebtn selector"></div>'
+            '<div class="av72-pagebtn selector"></div>'
           )
           .text(
 
@@ -3556,6 +3534,7 @@
               data.current +
               1
             ) +
+
             ' →'
           );
 
@@ -3594,10 +3573,11 @@
       }
 
 
-      root.empty()
+      root
+        .empty()
         .append(
           $(
-            '<div class="av70-title"></div>'
+            '<div class="av72-title"></div>'
           )
           .text(
             title
@@ -3605,7 +3585,7 @@
         )
         .append(
           $(
-            '<div class="av70-status"></div>'
+            '<div class="av72-status"></div>'
           )
           .text(
             message
@@ -3645,7 +3625,7 @@
 
       root.append(
         $(
-          '<div class="av70-title"></div>'
+          '<div class="av72-title"></div>'
         )
         .text(
           title
@@ -3661,8 +3641,11 @@
         !data.items.length
       ) {
         root.append(
-          '<div class="av70-status">' +
+
+          '<div class="av72-status">' +
+
           'Карточки аниме на этой странице не найдены.' +
+
           '</div>'
         );
       }
@@ -3671,7 +3654,7 @@
       else {
         var grid =
           $(
-            '<div class="av70-grid"></div>'
+            '<div class="av72-grid"></div>'
           );
 
 
@@ -3709,6 +3692,7 @@
 
 
       setTimeout(
+
         function () {
           if (
             !alive
@@ -3750,7 +3734,7 @@
 
         root.append(
           $(
-            '<div class="av70-title"></div>'
+            '<div class="av72-title"></div>'
           )
           .text(
             title
@@ -3759,8 +3743,11 @@
 
 
         root.append(
-          '<div class="av70-status">' +
+
+          '<div class="av72-status">' +
+
           'Загрузка AnimeVost...' +
+
           '</div>'
         );
 
@@ -3817,6 +3804,7 @@
 
             try {
               render(
+
                 parseCatalog(
 
                   String(
@@ -3848,6 +3836,7 @@
                   error.message
 
                     ? error.message
+
                     : error
                 )
               );
@@ -3869,6 +3858,7 @@
                   error.status
 
                     ? error.status
+
                     : '?'
                 )
               );
@@ -4026,13 +4016,13 @@
 
     var viewport =
       $(
-        '<div class="av70-v"></div>'
+        '<div class="av72-v"></div>'
       );
 
 
     var root =
       $(
-        '<div class="av70-p"></div>'
+        '<div class="av72-p"></div>'
       );
 
 
@@ -4055,7 +4045,7 @@
     function updateSelectedEpisode() {
       root
         .find(
-          '.av70-ep'
+          '.av72-ep'
         )
         .each(
           function () {
@@ -4070,9 +4060,11 @@
               'selected',
 
               toInt(
+
                 element.attr(
                   'data-episode'
                 ),
+
                 0
               ) ===
               selectedEpisode
@@ -4092,10 +4084,11 @@
       }
 
 
-      root.empty()
+      root
+        .empty()
         .append(
           $(
-            '<div class="av70-title"></div>'
+            '<div class="av72-title"></div>'
           )
           .text(
             item.title ||
@@ -4104,7 +4097,7 @@
         )
         .append(
           $(
-            '<div class="av70-status"></div>'
+            '<div class="av72-status"></div>'
           )
           .text(
             message
@@ -4153,13 +4146,13 @@
 
       var top =
         $(
-          '<div class="av70-dtop"></div>'
+          '<div class="av72-dtop"></div>'
         );
 
 
       top.append(
         posterBox(
-          'av70-dposter',
+          'av72-dposter',
           data.poster
         )
       );
@@ -4167,15 +4160,16 @@
 
       var body =
         $(
-          '<div class="av70-dbody"></div>'
+          '<div class="av72-dbody"></div>'
         );
 
 
       body.append(
         $(
-          '<div class="av70-title"></div>'
+          '<div class="av72-title"></div>'
         )
         .text(
+
           data.title ||
           item.title ||
           'AnimeVost'
@@ -4249,7 +4243,7 @@
 
       body.append(
         $(
-          '<div class="av70-dmeta"></div>'
+          '<div class="av72-dmeta"></div>'
         )
         .text(
           meta.join(
@@ -4261,9 +4255,10 @@
 
       body.append(
         $(
-          '<div class="av70-desc"></div>'
+          '<div class="av72-desc"></div>'
         )
         .text(
+
           data.description ||
           'Описание не найдено.'
         )
@@ -4271,69 +4266,41 @@
 
 
       /*
-       * Clean UI:
+       * One Watch button.
        *
-       * User selects episode below,
-       * then only needs to choose Player 1 or Player 2.
+       * The page itself keeps any genuine alternate-player
+       * controls if AnimeVost creates them for that title.
        */
-
       var actions =
         $(
-          '<div class="av70-actions"></div>'
+          '<div class="av72-actions"></div>'
         );
 
 
-      var player1 =
+      var watch =
         $(
           '<div class="' +
-          'av70-action av70-primary selector">' +
-          '▶ Плеер №1' +
+          'av72-action av72-primary selector">' +
+          '▶ Смотреть' +
           '</div>'
         );
 
 
-      var player2 =
-        $(
-          '<div class="' +
-          'av70-action selector">' +
-          '▶ Плеер №2' +
-          '</div>'
-        );
-
-
-      player1.on(
+      watch.on(
         'hover:enter',
 
         function () {
           openCleanPlayer(
             data,
-            selectedEpisode,
-            1
+            selectedEpisode
           );
         }
       );
 
 
-      player2.on(
-        'hover:enter',
-
-        function () {
-          openCleanPlayer(
-            data,
-            selectedEpisode,
-            2
-          );
-        }
+      actions.append(
+        watch
       );
-
-
-      actions
-        .append(
-          player1
-        )
-        .append(
-          player2
-        );
 
 
       body.append(
@@ -4352,8 +4319,11 @@
 
 
       root.append(
-        '<div class="av70-section">' +
+
+        '<div class="av72-section">' +
+
         'Серии' +
+
         '</div>'
       );
 
@@ -4364,7 +4334,7 @@
       ) {
         var episodes =
           $(
-            '<div class="av70-eps"></div>'
+            '<div class="av72-eps"></div>'
           );
 
 
@@ -4375,7 +4345,7 @@
             ) {
               var button =
                 $(
-                  '<div class="av70-ep selector"></div>'
+                  '<div class="av72-ep selector"></div>'
                 )
                 .attr(
                   'data-episode',
@@ -4429,8 +4399,11 @@
 
       else {
         root.append(
-          '<div class="av70-status">' +
+
+          '<div class="av72-status">' +
+
           'Список доступных серий не найден.' +
+
           '</div>'
         );
       }
@@ -4438,14 +4411,17 @@
 
       root.append(
 
-        '<div class="av70-note">' +
+        '<div class="av72-note">' +
 
-        'V0.7.0: при запуске плеера больше не открывается ' +
-        'вся страница AnimeVost. ' +
+        'V0.7.2: выберите серию и нажмите «Смотреть». ' +
 
-        'Worker оставляет оригинальные скрипты сайта, ' +
-        'но скрывает заголовок, описание, рекламу, категории ' +
-        'и комментарии — остаются только серии, выбор плеера и видео.' +
+        'Плеер открывается через точный AnimeVost-контейнер #playerbox; ' +
+
+        'реклама, описание и комментарии скрываются. ' +
+
+        'Если сам AnimeVost показывает альтернативный выбор плеера, ' +
+
+        'он останется внутри чистого playerbox.' +
 
         '</div>'
       );
@@ -4461,6 +4437,7 @@
 
 
       setTimeout(
+
         function () {
           if (
             !alive
@@ -4502,7 +4479,7 @@
 
         root.append(
           $(
-            '<div class="av70-title"></div>'
+            '<div class="av72-title"></div>'
           )
           .text(
             item.title ||
@@ -4512,8 +4489,11 @@
 
 
         root.append(
-          '<div class="av70-status">' +
+
+          '<div class="av72-status">' +
+
           'Загрузка страницы аниме...' +
+
           '</div>'
         );
 
@@ -4634,6 +4614,7 @@
                   error.message
 
                     ? error.message
+
                     : error
                 )
               );
@@ -4655,6 +4636,7 @@
                   error.status
 
                     ? error.status
+
                     : '?'
                 )
               );
@@ -4910,7 +4892,7 @@
 
 
       notify(
-        'AnimeVost V0.7.0 загружен'
+        'AnimeVost V0.7.2 загружен'
       );
     }
 
@@ -4919,13 +4901,13 @@
       error
     ) {
       console.log(
-        'AnimeVost V0.7.0 init error',
+        'AnimeVost V0.7.2 init error',
         error
       );
 
 
       notify(
-        'Ошибка запуска AnimeVost V0.7.0'
+        'Ошибка запуска AnimeVost V0.7.2'
       );
     }
   }
