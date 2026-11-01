@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  var NS = 'animevost_v081';
+  var NS = 'animevost_v082';
   var FLAG = NS + '_ready';
   var HOME = NS + '_home';
   var CATALOG = NS + '_catalog';
@@ -79,13 +79,22 @@
 
   function cleanPlayerUrl(path, episode) {
     var cleanPath = toPath(path || '/').replace(/\?.*$/, '');
-    return WORKER.replace(/\/$/, '') + cleanPath +
-      '?avclean=1&episode=' + encodeURIComponent(episode || 0) + '&_=' + Date.now();
+
+    return (
+      WORKER.replace(/\/$/, '') +
+      cleanPath +
+      '?avclean=1&episode=' +
+      encodeURIComponent(episode || 0) +
+      '&_=' +
+      Date.now()
+    );
   }
 
   function searchPath(query) {
-    return '/index.php?do=search&subaction=search&search_start=0&full_search=0&result_from=1&story=' +
-      encodeURIComponent(query);
+    return (
+      '/index.php?do=search&subaction=search&search_start=0&full_search=0&result_from=1&story=' +
+      encodeURIComponent(query)
+    );
   }
 
   function firstMatch(text, expression) {
@@ -94,8 +103,15 @@
   }
 
   function textOf(node) {
-    try { return clean(node && node.textContent ? node.textContent : ''); }
-    catch (e) { return ''; }
+    try {
+      return clean(
+        node && node.textContent
+          ? node.textContent
+          : ''
+      );
+    } catch (e) {
+      return '';
+    }
   }
 
   function safeTextOf(node) {
@@ -103,37 +119,69 @@
 
     try {
       var clone = node.cloneNode(true);
-      var junk = clone.querySelectorAll(
-        'script,style,noscript,iframe,object,embed,canvas,svg,form'
-      );
 
-      for (var i = junk.length - 1; i >= 0; i--) {
-        if (junk[i].parentNode) junk[i].parentNode.removeChild(junk[i]);
+      var junk =
+        clone.querySelectorAll(
+          'script,style,noscript,iframe,object,embed,canvas,svg,form'
+        );
+
+      for (
+        var i = junk.length - 1;
+        i >= 0;
+        i--
+      ) {
+        if (junk[i].parentNode) {
+          junk[i].parentNode.removeChild(
+            junk[i]
+          );
+        }
       }
 
-      return clean(clone.textContent || '');
+      return clean(
+        clone.textContent || ''
+      );
     } catch (e) {
       return textOf(node);
     }
   }
 
   function extractDescription(text, fallback) {
-    var value = firstMatch(
-      text,
-      /Описание:\s*(.+?)(?=\s+(?:Это аниме состоит из:|Понравился сайт\?|Быстрый переход|Режим кинотеатра|Теги:|Категории:|Правила для комментаторов|Комментарии:?\b)|$)/i
-    );
+    var value =
+      firstMatch(
+        text,
+        /Описание:\s*(.+?)(?=\s+(?:Это аниме состоит из:|Понравился сайт\?|Быстрый переход|Режим кинотеатра|Теги:|Категории:|Правила для комментаторов|Комментарии:?\b)|$)/i
+      );
 
-    if (!value) value = clean(fallback || '');
+    if (!value) {
+      value =
+        clean(
+          fallback || ''
+        );
+    }
 
     return value
-      .replace(/\s*window\.yaContextCb\.push[\s\S]*$/i, '')
-      .replace(/\s*var\s+[a-zA-Z_$][\w$]*\s*=\s*[\s\S]*$/i, '')
-      .replace(/\s*function\s*\([^)]*\)[\s\S]*$/i, '')
+      .replace(
+        /\s*window\.yaContextCb\.push[\s\S]*$/i,
+        ''
+      )
+      .replace(
+        /\s*var\s+[a-zA-Z_$][\w$]*\s*=\s*[\s\S]*$/i,
+        ''
+      )
+      .replace(
+        /\s*function\s*\([^)]*\)[\s\S]*$/i,
+        ''
+      )
       .trim();
   }
 
   function isAnimePath(path) {
-    return /^\/tip\/[^/]+\/[^?#]+\.html(?:\?.*)?$/i.test(toPath(path));
+    return (
+      /^\/tip\/[^/]+\/[^?#]+\.html(?:\?.*)?$/i
+        .test(
+          toPath(path)
+        )
+    );
   }
 
   /* -------------------------------------------------------
@@ -141,98 +189,247 @@
    * ----------------------------------------------------- */
 
   function findArticleContainer(node) {
-    var current = node;
-    var best = node && node.parentElement ? node.parentElement : node;
+    var current =
+      node;
 
-    for (var i = 0; i < 8 && current; i++) {
-      var text = safeTextOf(current);
-      var count = 0;
+    var best =
+      node &&
+      node.parentElement
+        ? node.parentElement
+        : node;
+
+    for (
+      var i = 0;
+      i < 8 &&
+      current;
+      i++
+    ) {
+      var text =
+        safeTextOf(
+          current
+        );
+
+      var count =
+        0;
 
       try {
-        count = current.querySelectorAll('h2 a[href*="/tip/"]').length;
+        count =
+          current
+            .querySelectorAll(
+              'h2 a[href*="/tip/"]'
+            )
+            .length;
       } catch (e) {}
 
       if (
-        text.indexOf('Год выхода:') >= 0 &&
+        text.indexOf(
+          'Год выхода:'
+        ) >= 0 &&
         (
-          text.indexOf('Описание:') >= 0 ||
-          text.indexOf('Количество серий:') >= 0
+          text.indexOf(
+            'Описание:'
+          ) >= 0 ||
+          text.indexOf(
+            'Количество серий:'
+          ) >= 0
         ) &&
         count <= 1
       ) {
         return current;
       }
 
-      if (count <= 1) best = current;
-      current = current.parentElement;
+      if (
+        count <= 1
+      ) {
+        best =
+          current;
+      }
+
+      current =
+        current.parentElement;
     }
 
-    return best || node;
+    return (
+      best ||
+      node
+    );
   }
 
-  function findPoster(container, href) {
-    if (!container) return '';
+  function findPoster(
+    container,
+    href
+  ) {
+    if (!container) {
+      return '';
+    }
 
-    var wanted = toPath(href);
-    var links = container.querySelectorAll('a[href]');
+    var wanted =
+      toPath(href);
+
+    var links =
+      container.querySelectorAll(
+        'a[href]'
+      );
+
     var i;
 
-    for (i = 0; i < links.length; i++) {
-      if (toPath(links[i].getAttribute('href') || '') === wanted) {
-        var image = links[i].querySelector('img');
+    for (
+      i = 0;
+      i < links.length;
+      i++
+    ) {
+      if (
+        toPath(
+          links[i]
+            .getAttribute(
+              'href'
+            ) ||
+          ''
+        ) ===
+        wanted
+      ) {
+        var image =
+          links[i]
+            .querySelector(
+              'img'
+            );
 
         if (image) {
           var source =
-            image.getAttribute('data-src') ||
-            image.getAttribute('src') ||
+            image
+              .getAttribute(
+                'data-src'
+              ) ||
+            image
+              .getAttribute(
+                'src'
+              ) ||
             '';
 
-          if (source) return absoluteUrl(source);
+          if (source) {
+            return absoluteUrl(
+              source
+            );
+          }
         }
       }
     }
 
-    var images = container.querySelectorAll('img');
+    var images =
+      container
+        .querySelectorAll(
+          'img'
+        );
 
-    for (i = 0; i < images.length; i++) {
+    for (
+      i = 0;
+      i < images.length;
+      i++
+    ) {
       var src =
-        images[i].getAttribute('data-src') ||
-        images[i].getAttribute('src') ||
+        images[i]
+          .getAttribute(
+            'data-src'
+          ) ||
+        images[i]
+          .getAttribute(
+            'src'
+          ) ||
         '';
 
-      var alt = clean(images[i].getAttribute('alt') || '');
-      var lower = src.toLowerCase();
+      var alt =
+        clean(
+          images[i]
+            .getAttribute(
+              'alt'
+            ) ||
+          ''
+        );
+
+      var lower =
+        src.toLowerCase();
 
       if (
         !src ||
-        /mc\.yandex|smile|rating|counter|loliland|banner/.test(lower)
+        /mc\.yandex|smile|rating|counter|loliland|banner/
+          .test(
+            lower
+          )
       ) {
         continue;
       }
 
-      if (alt || /uploads|poster|story|covers?/i.test(src)) {
-        return absoluteUrl(src);
+      if (
+        alt ||
+        /uploads|poster|story|covers?/i
+          .test(
+            src
+          )
+      ) {
+        return absoluteUrl(
+          src
+        );
       }
     }
 
     return '';
   }
 
-  function findWatchHref(container, fallbackHref) {
-    if (!container) return toPath(fallbackHref || '/');
+  function findWatchHref(
+    container,
+    fallbackHref
+  ) {
+    if (!container) {
+      return toPath(
+        fallbackHref ||
+        '/'
+      );
+    }
 
-    var links = container.querySelectorAll('a[href]');
+    var links =
+      container
+        .querySelectorAll(
+          'a[href]'
+        );
 
-    for (var i = 0; i < links.length; i++) {
-      var title = clean(links[i].textContent || '');
-      var href = toPath(links[i].getAttribute('href') || '');
+    for (
+      var i = 0;
+      i < links.length;
+      i++
+    ) {
+      var title =
+        clean(
+          links[i]
+            .textContent ||
+          ''
+        );
 
-      if (/^смотреть$/i.test(title) && isAnimePath(href)) {
+      var href =
+        toPath(
+          links[i]
+            .getAttribute(
+              'href'
+            ) ||
+          ''
+        );
+
+      if (
+        /^смотреть$/i
+          .test(
+            title
+          ) &&
+        isAnimePath(
+          href
+        )
+      ) {
         return href;
       }
     }
 
-    return toPath(fallbackHref || '/');
+    return toPath(
+      fallbackHref ||
+      '/'
+    );
   }
 
   function parseMenu(doc) {
@@ -243,131 +440,344 @@
     };
 
     var seen = {};
-    var anchors = doc.querySelectorAll('a[href]');
 
-    function add(group, title, path) {
-      title = clean(title);
-      path = toPath(path);
+    var anchors =
+      doc
+        .querySelectorAll(
+          'a[href]'
+        );
 
-      if (!title || !path) return;
+    function add(
+      group,
+      title,
+      path
+    ) {
+      title =
+        clean(title);
 
-      var key = group + '|' + path;
+      path =
+        toPath(path);
 
-      if (seen[key]) return;
+      if (
+        !title ||
+        !path
+      ) {
+        return;
+      }
 
-      seen[key] = true;
+      var key =
+        group +
+        '|' +
+        path;
+
+      if (
+        seen[key]
+      ) {
+        return;
+      }
+
+      seen[key] =
+        true;
 
       result[group].push({
-        title: title,
-        path: path
+        title:
+          title,
+        path:
+          path
       });
     }
 
-    for (var i = 0; i < anchors.length; i++) {
-      var href = toPath(anchors[i].getAttribute('href') || '');
-      var title = clean(anchors[i].textContent || '');
+    for (
+      var i = 0;
+      i < anchors.length;
+      i++
+    ) {
+      var href =
+        toPath(
+          anchors[i]
+            .getAttribute(
+              'href'
+            ) ||
+          ''
+        );
 
-      if (href.indexOf('/zhanr/') === 0) {
-        add('genres', title, href);
-      } else if (href.indexOf('/god/') === 0) {
-        add('years', title, href);
-      } else if (
-        href.indexOf('/tip/') === 0 &&
-        !/\.html(?:\?|$)/i.test(href)
+      var title =
+        clean(
+          anchors[i]
+            .textContent ||
+          ''
+        );
+
+      if (
+        href.indexOf(
+          '/zhanr/'
+        ) === 0
       ) {
-        add('types', title, href);
+        add(
+          'genres',
+          title,
+          href
+        );
+      } else if (
+        href.indexOf(
+          '/god/'
+        ) === 0
+      ) {
+        add(
+          'years',
+          title,
+          href
+        );
+      } else if (
+        href.indexOf(
+          '/tip/'
+        ) === 0 &&
+        !/\.html(?:\?|$)/i
+          .test(
+            href
+          )
+      ) {
+        add(
+          'types',
+          title,
+          href
+        );
       }
     }
 
-    result.years.sort(function (a, b) {
-      return toInt(b.title, 0) - toInt(a.title, 0);
-    });
+    result.years.sort(
+      function (a, b) {
+        return (
+          toInt(
+            b.title,
+            0
+          ) -
+          toInt(
+            a.title,
+            0
+          )
+        );
+      }
+    );
 
     return result;
   }
 
   function pageNumber(path) {
-    var match = toPath(path).match(/\/page\/(\d+)\/?/i);
-    return match ? toInt(match[1], 1) : 1;
+    var match =
+      toPath(
+        path
+      )
+      .match(
+        /\/page\/(\d+)\/?/i
+      );
+
+    return match
+      ? toInt(
+          match[1],
+          1
+        )
+      : 1;
   }
 
   function baseSectionPath(path) {
-    var cleanPath = toPath(path)
-      .replace(/[?#].*$/, '')
-      .replace(/\/page\/\d+\/?$/i, '/');
+    var cleanPath =
+      toPath(
+        path
+      )
+      .replace(
+        /[?#].*$/,
+        ''
+      )
+      .replace(
+        /\/page\/\d+\/?$/i,
+        '/'
+      );
 
-    return cleanPath.charAt(cleanPath.length - 1) === '/'
+    return (
+      cleanPath.charAt(
+        cleanPath.length - 1
+      ) === '/'
+    )
       ? cleanPath
       : cleanPath + '/';
   }
 
-  function makePagePath(path, page) {
-    var base = baseSectionPath(path);
-    return page <= 1 ? base : base + 'page/' + page + '/';
+  function makePagePath(
+    path,
+    page
+  ) {
+    var base =
+      baseSectionPath(
+        path
+      );
+
+    return (
+      page <= 1
+    )
+      ? base
+      : (
+          base +
+          'page/' +
+          page +
+          '/'
+        );
   }
 
-  function parsePaging(doc, currentPath) {
-    var current = pageNumber(currentPath);
-    var max = current;
-    var anchors = doc.querySelectorAll('a[href]');
+  function parsePaging(
+    doc,
+    currentPath
+  ) {
+    var current =
+      pageNumber(
+        currentPath
+      );
 
-    for (var i = 0; i < anchors.length; i++) {
-      var href = toPath(anchors[i].getAttribute('href') || '');
-      var match = href.match(/\/page\/(\d+)\/?/i);
+    var max =
+      current;
+
+    var anchors =
+      doc
+        .querySelectorAll(
+          'a[href]'
+        );
+
+    for (
+      var i = 0;
+      i < anchors.length;
+      i++
+    ) {
+      var href =
+        toPath(
+          anchors[i]
+            .getAttribute(
+              'href'
+            ) ||
+          ''
+        );
+
+      var match =
+        href.match(
+          /\/page\/(\d+)\/?/i
+        );
 
       if (match) {
-        max = Math.max(max, toInt(match[1], current));
+        max =
+          Math.max(
+            max,
+            toInt(
+              match[1],
+              current
+            )
+          );
       }
     }
 
     return {
-      current: current,
-      max: max,
+      current:
+        current,
+
+      max:
+        max,
+
       previous:
         current > 1
-          ? makePagePath(currentPath, current - 1)
+          ? makePagePath(
+              currentPath,
+              current - 1
+            )
           : '',
+
       next:
         max > current
-          ? makePagePath(currentPath, current + 1)
+          ? makePagePath(
+              currentPath,
+              current + 1
+            )
           : ''
     };
   }
 
-  function availableEpisodesFromTitle(title) {
-    var best = 0;
+  function availableEpisodesFromTitle(
+    title
+  ) {
+    var best =
+      0;
+
     var expression =
       /\[?\s*1\s*-\s*(\d{1,4})\s*(?:из\s*\d+\+?)?/ig;
 
     var match;
 
-    while ((match = expression.exec(clean(title)))) {
-      best = Math.max(best, toInt(match[1], 0));
+    while (
+      (
+        match =
+          expression.exec(
+            clean(
+              title
+            )
+          )
+      )
+    ) {
+      best =
+        Math.max(
+          best,
+          toInt(
+            match[1],
+            0
+          )
+        );
     }
 
     return best;
   }
 
-  function parseCatalog(html, currentPath) {
-    var doc = new DOMParser().parseFromString(
-      String(html || ''),
-      'text/html'
-    );
+  function parseCatalog(
+    html,
+    currentPath
+  ) {
+    var doc =
+      new DOMParser()
+        .parseFromString(
+          String(
+            html ||
+            ''
+          ),
+          'text/html'
+        );
 
-    var headings = doc.querySelectorAll('h2 a[href*="/tip/"]');
+    var headings =
+      doc
+        .querySelectorAll(
+          'h2 a[href*="/tip/"]'
+        );
+
     var items = [];
     var seen = {};
 
-    for (var i = 0; i < headings.length; i++) {
-      var anchor = headings[i];
+    for (
+      var i = 0;
+      i < headings.length;
+      i++
+    ) {
+      var anchor =
+        headings[i];
 
-      var href = toPath(
-        anchor.getAttribute('href') || ''
-      );
+      var href =
+        toPath(
+          anchor
+            .getAttribute(
+              'href'
+            ) ||
+          ''
+        );
 
-      var title = clean(
-        anchor.textContent || ''
-      );
+      var title =
+        clean(
+          anchor
+            .textContent ||
+          ''
+        );
 
       if (
         !isAnimePath(href) ||
@@ -377,127 +787,224 @@
         continue;
       }
 
-      seen[href] = true;
+      seen[href] =
+        true;
 
-      var container = findArticleContainer(
-        anchor.parentElement || anchor
-      );
+      var container =
+        findArticleContainer(
+          anchor.parentElement ||
+          anchor
+        );
 
-      var text = safeTextOf(container);
+      var text =
+        safeTextOf(
+          container
+        );
 
       items.push({
-        title: title,
-        href: href,
-        watchHref: findWatchHref(container, href),
-        poster: findPoster(container, href),
+        title:
+          title,
 
-        year: firstMatch(
-          text,
-          /Год выхода:\s*([^Ж]+?)(?=\s+Жанр:|$)/i
-        ),
+        href:
+          href,
 
-        genre: firstMatch(
-          text,
-          /Жанр:\s*(.+?)(?=\s+Тип:|$)/i
-        ),
+        watchHref:
+          findWatchHref(
+            container,
+            href
+          ),
 
-        type: firstMatch(
-          text,
-          /Тип:\s*(.+?)(?=\s+Количество серий:|\s+Режисс[её]р:|\s+Рейтинг:|$)/i
-        ),
+        poster:
+          findPoster(
+            container,
+            href
+          ),
 
-        episodes: firstMatch(
-          text,
-          /Количество серий:\s*(.+?)(?=\s+Режисс[её]р:|\s+Рейтинг:|\s+Описание:|$)/i
-        ),
+        year:
+          firstMatch(
+            text,
+            /Год выхода:\s*([^Ж]+?)(?=\s+Жанр:|$)/i
+          ),
 
-        description: extractDescription(
-          text,
-          ''
-        ),
+        genre:
+          firstMatch(
+            text,
+            /Жанр:\s*(.+?)(?=\s+Тип:|$)/i
+          ),
+
+        type:
+          firstMatch(
+            text,
+            /Тип:\s*(.+?)(?=\s+Количество серий:|\s+Режисс[её]р:|\s+Рейтинг:|$)/i
+          ),
+
+        episodes:
+          firstMatch(
+            text,
+            /Количество серий:\s*(.+?)(?=\s+Режисс[её]р:|\s+Рейтинг:|\s+Описание:|$)/i
+          ),
+
+        description:
+          extractDescription(
+            text,
+            ''
+          ),
 
         availableEpisodes:
-          availableEpisodesFromTitle(title)
+          availableEpisodesFromTitle(
+            title
+          )
       });
     }
 
     return {
-      items: items,
-      menu: parseMenu(doc),
-      paging: parsePaging(doc, currentPath)
+      items:
+        items,
+
+      menu:
+        parseMenu(doc),
+
+      paging:
+        parsePaging(
+          doc,
+          currentPath
+        )
     };
   }
 
-  function buildEpisodes(item, episodeText) {
+  function buildEpisodes(
+    item,
+    episodeText
+  ) {
     var max =
-      item && item.availableEpisodes
-        ? toInt(item.availableEpisodes, 0)
+      item &&
+      item.availableEpisodes
+        ? toInt(
+            item.availableEpisodes,
+            0
+          )
         : 0;
 
     var match;
 
     if (!max) {
-      match = clean(episodeText).match(
-        /\b1\s*-\s*(\d{1,4})\b/i
-      );
+      match =
+        clean(
+          episodeText
+        )
+        .match(
+          /\b1\s*-\s*(\d{1,4})\b/i
+        );
 
       if (match) {
-        max = toInt(match[1], 0);
+        max =
+          toInt(
+            match[1],
+            0
+          );
       }
     }
 
     if (!max) {
-      match = clean(episodeText).match(
-        /\b(\d{1,4})\+?\b/
-      );
+      match =
+        clean(
+          episodeText
+        )
+        .match(
+          /\b(\d{1,4})\+?\b/
+        );
 
       if (match) {
-        max = toInt(match[1], 0);
+        max =
+          toInt(
+            match[1],
+            0
+          );
       }
     }
 
-    max = Math.max(
-      0,
-      Math.min(500, max)
-    );
+    max =
+      Math.max(
+        0,
+        Math.min(
+          500,
+          max
+        )
+      );
 
     var result = [];
 
-    for (var i = 1; i <= max; i++) {
+    for (
+      var i = 1;
+      i <= max;
+      i++
+    ) {
       result.push({
-        number: i,
-        title: i + ' серия'
+        number:
+          i,
+
+        title:
+          i + ' серия'
       });
     }
 
     return result;
   }
 
-  function parseDetail(html, item) {
-    var doc = new DOMParser().parseFromString(
-      String(html || ''),
-      'text/html'
-    );
+  function parseDetail(
+    html,
+    item
+  ) {
+    var doc =
+      new DOMParser()
+        .parseFromString(
+          String(
+            html ||
+            ''
+          ),
+          'text/html'
+        );
 
-    var text = safeTextOf(doc.body);
-    var heading = doc.querySelector('h1');
+    var text =
+      safeTextOf(
+        doc.body
+      );
+
+    var heading =
+      doc.querySelector(
+        'h1'
+      );
 
     var title =
-      item && item.title
-        ? clean(item.title)
+      item &&
+      item.title
+        ? clean(
+            item.title
+          )
         : '';
 
     if (
       heading &&
-      clean(heading.textContent)
+      clean(
+        heading.textContent
+      )
     ) {
-      title = clean(heading.textContent);
+      title =
+        clean(
+          heading.textContent
+        );
     }
 
     if (!title) {
       title =
-        clean(doc.title || '')
-          .replace(/\s*[|—-].*$/, '') ||
+        clean(
+          doc.title ||
+          ''
+        )
+        .replace(
+          /\s*[|—-].*$/,
+          ''
+        ) ||
         'AnimeVost';
     }
 
@@ -506,7 +1013,10 @@
         text,
         /(?:Год выхода|Год):\s*([^Ж]+?)(?=\s+Жанр:|$)/i
       ) ||
-      (item && item.year) ||
+      (
+        item &&
+        item.year
+      ) ||
       '';
 
     var genre =
@@ -514,7 +1024,10 @@
         text,
         /Жанр:\s*(.+?)(?=\s+Тип:|$)/i
       ) ||
-      (item && item.genre) ||
+      (
+        item &&
+        item.genre
+      ) ||
       '';
 
     var type =
@@ -522,7 +1035,10 @@
         text,
         /Тип:\s*(.+?)(?=\s+Количество серий:|\s+Режисс[её]р:|\s+Длительность:|\s+Рейтинг:|$)/i
       ) ||
-      (item && item.type) ||
+      (
+        item &&
+        item.type
+      ) ||
       '';
 
     var episodesText =
@@ -530,58 +1046,82 @@
         text,
         /Количество серий:\s*(.+?)(?=\s+Режисс[её]р:|\s+Длительность:|\s+Рейтинг:|\s+Описание:|$)/i
       ) ||
-      (item && item.episodes) ||
+      (
+        item &&
+        item.episodes
+      ) ||
       '';
 
     return {
-      title: title,
+      title:
+        title,
 
       href:
-        item && item.href
+        item &&
+        item.href
           ? item.href
           : '/',
 
       watchHref:
-        item && item.watchHref
+        item &&
+        item.watchHref
           ? item.watchHref
           : (
-              item && item.href
+              item &&
+              item.href
                 ? item.href
                 : '/'
             ),
 
       poster:
-        item && item.poster
+        item &&
+        item.poster
           ? item.poster
-          : findPoster(doc.body, '/'),
+          : findPoster(
+              doc.body,
+              '/'
+            ),
 
-      year: year,
-      genre: genre,
-      type: type,
-      episodesText: episodesText,
+      year:
+        year,
 
-      director: firstMatch(
-        text,
-        /Режисс[её]р:\s*(.+?)(?=\s+(?:Длительность|Рейтинг|Описание|Категории):|$)/i
-      ),
+      genre:
+        genre,
 
-      duration: firstMatch(
-        text,
-        /(?:Длительность|Продолжительность):\s*(.+?)(?=\s+(?:Рейтинг|Описание|Категории):|$)/i
-      ),
+      type:
+        type,
+
+      episodesText:
+        episodesText,
+
+      director:
+        firstMatch(
+          text,
+          /Режисс[её]р:\s*(.+?)(?=\s+(?:Длительность|Рейтинг|Описание|Категории):|$)/i
+        ),
+
+      duration:
+        firstMatch(
+          text,
+          /(?:Длительность|Продолжительность):\s*(.+?)(?=\s+(?:Рейтинг|Описание|Категории):|$)/i
+        ),
 
       description:
         extractDescription(
           text,
-          item && item.description
+          item &&
+          item.description
             ? item.description
             : ''
         ),
 
       availableEpisodes:
-        item && item.availableEpisodes
+        item &&
+        item.availableEpisodes
           ? item.availableEpisodes
-          : availableEpisodesFromTitle(title),
+          : availableEpisodesFromTitle(
+              title
+            ),
 
       episodes:
         buildEpisodes(
@@ -597,12 +1137,16 @@
 
   function recentItems() {
     try {
-      var list = Lampa.Storage.get(
-        RECENT_KEY,
-        []
-      );
+      var list =
+        Lampa.Storage.get(
+          RECENT_KEY,
+          []
+        );
 
-      return list && list.length
+      return (
+        list &&
+        list.length
+      )
         ? list
         : [];
     } catch (e) {
@@ -610,10 +1154,20 @@
     }
   }
 
-  function saveRecent(item, episode) {
-    if (!item || !item.href) return;
+  function saveRecent(
+    item,
+    episode
+  ) {
+    if (
+      !item ||
+      !item.href
+    ) {
+      return;
+    }
 
-    var list = recentItems();
+    var list =
+      recentItems();
+
     var next = [];
 
     next.push({
@@ -645,7 +1199,8 @@
         '',
 
       episodes:
-        typeof item.episodes === 'string'
+        typeof item.episodes ===
+        'string'
           ? item.episodes
           : (
               item.episodesText ||
@@ -665,7 +1220,8 @@
         ),
 
       savedEpisode:
-        episode || 1,
+        episode ||
+        1,
 
       savedAt:
         Date.now()
@@ -673,14 +1229,18 @@
 
     for (
       var i = 0;
-      i < list.length && next.length < 12;
+      i < list.length &&
+      next.length < 12;
       i++
     ) {
       if (
         list[i] &&
-        list[i].href !== item.href
+        list[i].href !==
+        item.href
       ) {
-        next.push(list[i]);
+        next.push(
+          list[i]
+        );
       }
     }
 
@@ -697,7 +1257,10 @@
    * ----------------------------------------------------- */
 
   function injectStyle() {
-    if ($('#animevost-v080-style').length) {
+    if (
+      $('#animevost-v080-style')
+        .length
+    ) {
       return;
     }
 
@@ -1232,12 +1795,18 @@
 
       '.av80-player-shell{' +
         'position:fixed;' +
-        'inset:0;' +
+        'left:0;' +
+        'top:0;' +
+        'right:0;' +
+        'bottom:0;' +
+        'width:100%;' +
+        'height:100%;' +
         'z-index:999999;' +
         'background:#05070a;' +
         'color:#fff;' +
         'display:flex;' +
         'flex-direction:column;' +
+        'overflow:hidden;' +
       '}' +
 
       '.av80-player-top{' +
@@ -1254,6 +1823,7 @@
       '.av80-player-back{' +
         'width:2.5em;' +
         'height:2.5em;' +
+        'min-width:2.5em;' +
         'border-radius:50%;' +
         'display:flex;' +
         'align-items:center;' +
@@ -1275,31 +1845,35 @@
         'overflow:hidden;' +
         'text-overflow:ellipsis;' +
         'flex:1;' +
+        'padding-right:.8em;' +
       '}' +
 
       '.av80-player-episode{' +
         'font-size:.8em;' +
-        'color:#aeb7c2;' +
-        'margin-left:.8em;' +
+        'color:#f4c18e;' +
+        'margin-left:.5em;' +
         'padding:.42em .72em;' +
         'border-radius:999px;' +
-        'background:#151a21;' +
+        'background:rgba(255,138,31,.12);' +
+        'border:1px solid rgba(255,138,31,.28);' +
         'white-space:nowrap;' +
       '}' +
 
       '.av80-player-status{' +
         'font-size:.76em;' +
-        'color:#838d9a;' +
+        'color:#909aa7;' +
         'margin-left:.8em;' +
         'white-space:nowrap;' +
-        'max-width:36%;' +
+        'max-width:34%;' +
         'overflow:hidden;' +
         'text-overflow:ellipsis;' +
       '}' +
 
       '.av80-player-shell>iframe{' +
         'width:100%;' +
-        'height:calc(100% - 4.4em);' +
+        'height:100%;' +
+        'min-height:0;' +
+        'flex:1 1 auto;' +
         'border:0;' +
         'background:#07090c;' +
         'display:block;' +
@@ -1326,33 +1900,52 @@
    * Common UI helpers
    * ----------------------------------------------------- */
 
-  function posterImage(url, fallbackText) {
-    var wrap = $('<div></div>');
+  function posterImage(
+    url,
+    fallbackText
+  ) {
+    var wrap =
+      $('<div></div>');
 
     if (!url) {
       wrap.append(
         '<div class="av80-fallback">' +
-          escapeHtml(fallbackText || 'AnimeVost') +
+          escapeHtml(
+            fallbackText ||
+            'AnimeVost'
+          ) +
         '</div>'
       );
 
       return wrap;
     }
 
-    var img = $('<img alt="">')
-      .attr('src', url);
-
-    img.on('error', function () {
-      wrap
-        .empty()
-        .append(
-          '<div class="av80-fallback">' +
-            escapeHtml(fallbackText || 'AnimeVost') +
-          '</div>'
+    var img =
+      $('<img alt="">')
+        .attr(
+          'src',
+          url
         );
-    });
 
-    wrap.append(img);
+    img.on(
+      'error',
+      function () {
+        wrap
+          .empty()
+          .append(
+            '<div class="av80-fallback">' +
+              escapeHtml(
+                fallbackText ||
+                'AnimeVost'
+              ) +
+            '</div>'
+          );
+      }
+    );
+
+    wrap.append(
+      img
+    );
 
     return wrap;
   }
@@ -1361,32 +1954,47 @@
     var parts = [];
 
     if (item.year) {
-      parts.push(item.year);
+      parts.push(
+        item.year
+      );
     }
 
     if (item.type) {
-      parts.push(item.type);
+      parts.push(
+        item.type
+      );
     }
 
-    if (item.availableEpisodes) {
+    if (
+      item.availableEpisodes
+    ) {
       parts.push(
         item.availableEpisodes +
         ' сер.'
       );
-    } else if (item.episodes) {
+    } else if (
+      item.episodes
+    ) {
       parts.push(
-        clean(item.episodes)
-          .replace(
-            /\s*\([^)]*\)\s*$/,
-            ''
-          )
+        clean(
+          item.episodes
+        )
+        .replace(
+          /\s*\([^)]*\)\s*$/,
+          ''
+        )
       );
     }
 
-    return parts.join(' • ');
+    return parts.join(
+      ' • '
+    );
   }
 
-  function makeTopBar(menu, onHome) {
+  function makeTopBar(
+    menu,
+    onHome
+  ) {
     var top =
       $('<div class="av80-topbar"></div>');
 
@@ -1396,7 +2004,11 @@
     var nav =
       $('<div class="av80-nav"></div>');
 
-    function add(label, handler, search) {
+    function add(
+      label,
+      handler,
+      search
+    ) {
       var button =
         $('<div class="av80-navbtn selector"></div>');
 
@@ -1406,7 +2018,9 @@
           escapeHtml(label)
         );
       } else {
-        button.text(label);
+        button.text(
+          label
+        );
       }
 
       button.on(
@@ -1414,7 +2028,9 @@
         handler
       );
 
-      nav.append(button);
+      nav.append(
+        button
+      );
     }
 
     add(
@@ -1444,7 +2060,8 @@
       function () {
         showSelect(
           'Жанр',
-          menu.genres || []
+          menu.genres ||
+          []
         );
       }
     );
@@ -1454,7 +2071,8 @@
       function () {
         showSelect(
           'Категории',
-          menu.types || []
+          menu.types ||
+          []
         );
       }
     );
@@ -1464,7 +2082,8 @@
       function () {
         showSelect(
           'Год',
-          menu.years || []
+          menu.years ||
+          []
         );
       }
     );
@@ -1496,7 +2115,10 @@
     return top;
   }
 
-  function ensureVisible(viewport, element) {
+  function ensureVisible(
+    viewport,
+    element
+  ) {
     if (
       !viewport ||
       !viewport[0] ||
@@ -1505,9 +2127,16 @@
       return;
     }
 
-    var container = viewport[0];
-    var er = element.getBoundingClientRect();
-    var vr = container.getBoundingClientRect();
+    var container =
+      viewport[0];
+
+    var er =
+      element
+        .getBoundingClientRect();
+
+    var vr =
+      container
+        .getBoundingClientRect();
 
     if (
       er.bottom >
@@ -1515,13 +2144,19 @@
     ) {
       container.scrollTop +=
         er.bottom -
-        (vr.bottom - 38);
+        (
+          vr.bottom -
+          38
+        );
     } else if (
       er.top <
       vr.top + 18
     ) {
       container.scrollTop -=
-        (vr.top + 18) -
+        (
+          vr.top +
+          18
+        ) -
         er.top;
     }
 
@@ -1535,7 +2170,9 @@
       try {
         var style =
           window.getComputedStyle
-            ? window.getComputedStyle(scroller)
+            ? window.getComputedStyle(
+                scroller
+              )
             : null;
 
         var overflowX =
@@ -1548,10 +2185,12 @@
           overflowX === 'scroll'
         ) {
           var sr =
-            scroller.getBoundingClientRect();
+            scroller
+              .getBoundingClientRect();
 
           var rr =
-            element.getBoundingClientRect();
+            element
+              .getBoundingClientRect();
 
           if (
             rr.right >
@@ -1559,13 +2198,19 @@
           ) {
             scroller.scrollLeft +=
               rr.right -
-              (sr.right - 24);
+              (
+                sr.right -
+                24
+              );
           } else if (
             rr.left <
             sr.left + 24
           ) {
             scroller.scrollLeft -=
-              (sr.left + 24) -
+              (
+                sr.left +
+                24
+              ) -
               rr.left;
           }
 
@@ -1582,15 +2227,21 @@
     var result = [];
 
     root
-      .find('.selector')
-      .each(function () {
-        if (
-          this &&
-          this.offsetParent !== null
-        ) {
-          result.push(this);
+      .find(
+        '.selector'
+      )
+      .each(
+        function () {
+          if (
+            this &&
+            this.offsetParent !== null
+          ) {
+            result.push(
+              this
+            );
+          }
         }
-      });
+      );
 
     return result;
   }
@@ -1612,7 +2263,8 @@
         rect.top +
         rect.height / 2;
 
-      var row = null;
+      var row =
+        null;
 
       for (
         var j = 0;
@@ -1627,42 +2279,65 @@
           tolerance +
           rect.height * 0.12
         ) {
-          row = rows[j];
+          row =
+            rows[j];
+
           break;
         }
       }
 
       if (!row) {
         row = {
-          centerY: centerY,
-          items: []
+          centerY:
+            centerY,
+
+          items:
+            []
         };
 
-        rows.push(row);
+        rows.push(
+          row
+        );
       }
 
-      row.items.push(elements[i]);
+      row.items.push(
+        elements[i]
+      );
     }
 
-    rows.sort(function (a, b) {
-      return a.centerY - b.centerY;
-    });
+    rows.sort(
+      function (a, b) {
+        return (
+          a.centerY -
+          b.centerY
+        );
+      }
+    );
 
-    rows.forEach(function (row) {
-      row.items.sort(
-        function (a, b) {
-          return (
-            a.getBoundingClientRect().left -
-            b.getBoundingClientRect().left
-          );
-        }
-      );
-    });
+    rows.forEach(
+      function (row) {
+        row.items.sort(
+          function (a, b) {
+            return (
+              a
+                .getBoundingClientRect()
+                .left -
+              b
+                .getBoundingClientRect()
+                .left
+            );
+          }
+        );
+      }
+    );
 
     return rows;
   }
 
-  function nearest(items, current) {
+  function nearest(
+    items,
+    current
+  ) {
     if (
       !items ||
       !items.length
@@ -1675,14 +2350,18 @@
     }
 
     var cr =
-      current.getBoundingClientRect();
+      current
+        .getBoundingClientRect();
 
     var cx =
       cr.left +
       cr.width / 2;
 
-    var best = items[0];
-    var bestDistance = Infinity;
+    var best =
+      items[0];
+
+    var bestDistance =
+      Infinity;
 
     for (
       var i = 0;
@@ -1723,12 +2402,15 @@
     edgeLeft,
     edgeUp
   ) {
-    var last = null;
+    var last =
+      null;
 
     function current() {
       if (
         last &&
-        document.documentElement.contains(last) &&
+        document.documentElement.contains(
+          last
+        ) &&
         last.offsetParent !== null
       ) {
         return last;
@@ -1744,7 +2426,9 @@
       }
 
       var list =
-        visibleSelectors(root);
+        visibleSelectors(
+          root
+        );
 
       return list.length
         ? list[0]
@@ -1756,7 +2440,8 @@
         return false;
       }
 
-      last = element;
+      last =
+        element;
 
       try {
         Lampa.Controller.collectionFocus(
@@ -1777,14 +2462,18 @@
       );
 
       $(element)
-        .trigger('av80:focus');
+        .trigger(
+          'av80:focus'
+        );
 
       return true;
     }
 
     function move(direction) {
       var list =
-        visibleSelectors(root);
+        visibleSelectors(
+          root
+        );
 
       var cur =
         current();
@@ -1797,10 +2486,15 @@
       }
 
       var rows =
-        groupRows(list);
+        groupRows(
+          list
+        );
 
-      var rowIndex = -1;
-      var columnIndex = -1;
+      var rowIndex =
+        -1;
+
+      var columnIndex =
+        -1;
 
       for (
         var r = 0;
@@ -1822,17 +2516,24 @@
           }
         }
 
-        if (rowIndex >= 0) {
+        if (
+          rowIndex >= 0
+        ) {
           break;
         }
       }
 
-      if (rowIndex < 0) {
-        return focus(list[0]);
+      if (
+        rowIndex < 0
+      ) {
+        return focus(
+          list[0]
+        );
       }
 
       if (
-        direction === 'left'
+        direction ===
+        'left'
       ) {
         if (
           columnIndex > 0
@@ -1840,7 +2541,8 @@
           return focus(
             rows[rowIndex]
               .items[
-                columnIndex - 1
+                columnIndex -
+                1
               ]
           );
         }
@@ -1856,17 +2558,20 @@
       }
 
       if (
-        direction === 'right'
+        direction ===
+        'right'
       ) {
         if (
           columnIndex <
           rows[rowIndex]
-            .items.length - 1
+            .items.length -
+          1
         ) {
           return focus(
             rows[rowIndex]
               .items[
-                columnIndex + 1
+                columnIndex +
+                1
               ]
           );
         }
@@ -1875,15 +2580,18 @@
       }
 
       if (
-        direction === 'up'
+        direction ===
+        'up'
       ) {
         if (
           rowIndex > 0
         ) {
           return focus(
             nearest(
-              rows[rowIndex - 1]
-                .items,
+              rows[
+                rowIndex -
+                1
+              ].items,
               cur
             )
           );
@@ -1900,16 +2608,20 @@
       }
 
       if (
-        direction === 'down'
+        direction ===
+        'down'
       ) {
         if (
           rowIndex <
-          rows.length - 1
+          rows.length -
+          1
         ) {
           return focus(
             nearest(
-              rows[rowIndex + 1]
-                .items,
+              rows[
+                rowIndex +
+                1
+              ].items,
               cur
             )
           );
@@ -1923,14 +2635,20 @@
 
     function bind() {
       root
-        .find('.selector')
+        .find(
+          '.selector'
+        )
         .off(
-          'hover:focus.' + NS
+          'hover:focus.' +
+          NS
         )
         .on(
-          'hover:focus.' + NS,
+          'hover:focus.' +
+          NS,
+
           function () {
-            last = this;
+            last =
+              this;
 
             ensureVisible(
               viewport,
@@ -1938,19 +2656,27 @@
             );
 
             $(this)
-              .trigger('av80:focus');
+              .trigger(
+                'av80:focus'
+              );
           }
         );
     }
 
     return {
-      focus: focus,
-      move: move,
-      bind: bind,
+      focus:
+        focus,
 
-      getLast: function () {
-        return last;
-      }
+      move:
+        move,
+
+      bind:
+        bind,
+
+      getLast:
+        function () {
+          return last;
+        }
     };
   }
 
@@ -1974,10 +2700,16 @@
       );
 
     var image =
-      imageWrap.find('img');
+      imageWrap.find(
+        'img'
+      );
 
-    if (image.length) {
-      poster.append(image);
+    if (
+      image.length
+    ) {
+      poster.append(
+        image
+      );
     } else {
       poster.append(
         imageWrap.children()
@@ -1988,7 +2720,8 @@
       '<div class="av80-card-shade"></div>'
     );
 
-    var badge = '';
+    var badge =
+      '';
 
     if (
       options.recent &&
@@ -2013,18 +2746,22 @@
     if (badge) {
       poster.append(
         '<div class="av80-badge' +
-          (
-            options.recent
-              ? ' orange'
-              : ''
-          ) +
+        (
+          options.recent
+            ? ' orange'
+            : ''
+        ) +
         '">' +
-          escapeHtml(badge) +
+        escapeHtml(
+          badge
+        ) +
         '</div>'
       );
     }
 
-    card.append(poster);
+    card.append(
+      poster
+    );
 
     card.append(
       $('<div class="av80-card-name"></div>')
@@ -2037,7 +2774,9 @@
     card.append(
       $('<div class="av80-card-meta"></div>')
         .text(
-          metaSummary(item) ||
+          metaSummary(
+            item
+          ) ||
           item.genre ||
           ''
         )
@@ -2051,7 +2790,9 @@
     card.on(
       'hover:enter',
       function () {
-        openDetail(item);
+        openDetail(
+          item
+        );
       }
     );
 
@@ -2064,43 +2805,72 @@
 
   function openHome() {
     Lampa.Activity.push({
-      url: '',
-      title: 'AnimeVost',
-      component: HOME,
-      page: 1
+      url:
+        '',
+
+      title:
+        'AnimeVost',
+
+      component:
+        HOME,
+
+      page:
+        1
     });
   }
 
-  function openCatalog(path, title) {
+  function openCatalog(
+    path,
+    title
+  ) {
     Lampa.Activity.push({
-      url: '',
+      url:
+        '',
+
       title:
         title ||
         'AnimeVost',
-      component: CATALOG,
+
+      component:
+        CATALOG,
+
       av_path:
         path ||
         '/',
+
       av_title:
         title ||
         'AnimeVost',
-      page: 1
+
+      page:
+        1
     });
   }
 
   function openDetail(item) {
     Lampa.Activity.push({
-      url: '',
+      url:
+        '',
+
       title:
         item.title ||
         'AnimeVost',
-      component: DETAIL,
-      av_item: item,
-      page: 1
+
+      component:
+        DETAIL,
+
+      av_item:
+        item,
+
+      page:
+        1
     });
   }
 
-  function showSelect(title, list) {
+  function showSelect(
+    title,
+    list
+  ) {
     if (
       !list ||
       !list.length
@@ -2113,14 +2883,18 @@
     }
 
     Lampa.Select.show({
-      title: title,
+      title:
+        title,
 
       items:
         list.map(
           function (item) {
             return {
-              title: item.title,
-              av_path: item.path
+              title:
+                item.title,
+
+              av_path:
+                item.path
             };
           }
         ),
@@ -2183,7 +2957,8 @@
 
           if (
             result &&
-            typeof result === 'object' &&
+            typeof result ===
+            'object' &&
             typeof result.value !==
             'undefined'
           ) {
@@ -2193,7 +2968,8 @@
 
           var query =
             clean(
-              value || ''
+              value ||
+              ''
             );
 
           if (!query) {
@@ -2201,8 +2977,12 @@
           }
 
           openCatalog(
-            searchPath(query),
-            'Поиск: ' + query
+            searchPath(
+              query
+            ),
+
+            'Поиск: ' +
+            query
           );
         }
       );
@@ -2231,23 +3011,36 @@
       return;
     }
 
-    try {
-      playerSession.frame[0]
-        .contentWindow
-        .postMessage(
-          {
-            source:
-              'animevost-clean-host-v080',
+    var hosts = [
+      'animevost-clean-host-v082',
+      'animevost-clean-host-v080',
+      'animevost-clean-host-v072'
+    ];
 
-            type:
-              'key',
+    for (
+      var i = 0;
+      i < hosts.length;
+      i++
+    ) {
+      try {
+        playerSession
+          .frame[0]
+          .contentWindow
+          .postMessage(
+            {
+              source:
+                hosts[i],
 
-            key:
-              key
-          },
-          '*'
-        );
-    } catch (e) {}
+              type:
+                'key',
+
+              key:
+                key
+            },
+            '*'
+          );
+      } catch (e) {}
+    }
   }
 
   function closeCleanPlayer() {
@@ -2284,16 +3077,22 @@
     } catch (e4) {}
   }
 
-  function openCleanPlayer(item, episode) {
+  function openCleanPlayer(
+    item,
+    episode
+  ) {
     closeCleanPlayer();
 
     episode =
-      episode || 1;
+      episode ||
+      1;
 
-    saveRecent(
-      item,
-      episode
-    );
+    try {
+      saveRecent(
+        item,
+        episode
+      );
+    } catch (e) {}
 
     var overlay =
       $('<div class="av80-player-shell"></div>');
@@ -2319,7 +3118,7 @@
         );
 
     var status =
-      $('<div class="av80-player-status">Подготовка плеера…</div>');
+      $('<div class="av80-player-status">Загрузка плеера…</div>');
 
     var frame =
       $('<iframe tabindex="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>')
@@ -2332,6 +3131,76 @@
           )
         );
 
+    /*
+     * Proven V0.7.2 fullscreen geometry,
+     * forced inline for old webOS.
+     */
+    overlay.css({
+      position:
+        'fixed',
+
+      left:
+        '0px',
+
+      top:
+        '0px',
+
+      right:
+        '0px',
+
+      bottom:
+        '0px',
+
+      width:
+        '100%',
+
+      height:
+        '100%',
+
+      zIndex:
+        999999,
+
+      background:
+        '#05070a',
+
+      display:
+        'flex',
+
+      flexDirection:
+        'column',
+
+      overflow:
+        'hidden'
+    });
+
+    top.css({
+      flex:
+        '0 0 auto'
+    });
+
+    frame.css({
+      width:
+        '100%',
+
+      height:
+        '100%',
+
+      minHeight:
+        '0px',
+
+      flex:
+        '1 1 auto',
+
+      border:
+        '0',
+
+      display:
+        'block',
+
+      background:
+        '#07090c'
+    });
+
     top
       .append(back)
       .append(title)
@@ -2343,15 +3212,53 @@
       .append(frame);
 
     $('body')
-      .append(overlay);
+      .append(
+        overlay
+      );
+
+    try {
+      overlay.show();
+
+      overlay[0]
+        .style
+        .display =
+          'flex';
+
+      overlay[0]
+        .style
+        .visibility =
+          'visible';
+
+      overlay[0]
+        .style
+        .opacity =
+          '1';
+    } catch (e2) {}
 
     var session = {
-      overlay: overlay,
-      frame: frame,
-      status: status,
-      back: back,
-      ready: false,
-      messageHandler: null
+      overlay:
+        overlay,
+
+      frame:
+        frame,
+
+      status:
+        status,
+
+      back:
+        back,
+
+      ready:
+        false,
+
+      isolated:
+        false,
+
+      playerReady:
+        false,
+
+      messageHandler:
+        null
     };
 
     playerSession =
@@ -2360,11 +3267,20 @@
     session.messageHandler =
       function (event) {
         var data =
-          event.data || {};
+          event.data ||
+          {};
+
+        var source =
+          data.source ||
+          '';
 
         if (
-          data.source !==
-          'animevost-clean-v080'
+          source !==
+            'animevost-clean-v082' &&
+          source !==
+            'animevost-clean-v080' &&
+          source !==
+            'animevost-clean-v072'
         ) {
           return;
         }
@@ -2377,14 +3293,17 @@
             true;
 
           status.text(
-            'Загрузка…'
+            'Подготавливаю страницу плеера…'
           );
         } else if (
           data.type ===
           'isolated'
         ) {
+          session.isolated =
+            true;
+
           status.text(
-            'Выбираю серию…'
+            'Плеер найден • выбираю серию…'
           );
         } else if (
           data.type ===
@@ -2393,14 +3312,17 @@
           status.text(
             'Серия ' +
             data.number +
-            ' • загружаю видео…'
+            ' выбрана • загружаю видео…'
           );
         } else if (
           data.type ===
           'player-ready'
         ) {
+          session.playerReady =
+            true;
+
           status.text(
-            'OK play/pause • ←/→ 10 сек • Back назад'
+            'OK play/pause • ←/→ 10 сек • ↑ серии • Back назад'
           );
 
           setTimeout(
@@ -2411,7 +3333,7 @@
               ) {
                 try {
                   frame[0].focus();
-                } catch (e) {}
+                } catch (e3) {}
               }
             },
             80
@@ -2421,7 +3343,7 @@
           'clean-error'
         ) {
           status.text(
-            'Плеер не подготовлен • Back назад'
+            'Не удалось подготовить плеер • Back назад'
           );
         } else if (
           data.type ===
@@ -2459,52 +3381,72 @@
 
         left:
           function () {
-            sendPlayerKey('left');
+            sendPlayerKey(
+              'left'
+            );
           },
 
         right:
           function () {
-            sendPlayerKey('right');
+            sendPlayerKey(
+              'right'
+            );
           },
 
         up:
           function () {
-            sendPlayerKey('up');
+            sendPlayerKey(
+              'up'
+            );
           },
 
         down:
           function () {
-            sendPlayerKey('down');
+            sendPlayerKey(
+              'down'
+            );
           },
 
         enter:
           function () {
-            sendPlayerKey('enter');
+            sendPlayerKey(
+              'enter'
+            );
           },
 
         playpause:
           function () {
-            sendPlayerKey('playpause');
+            sendPlayerKey(
+              'playpause'
+            );
           },
 
         play:
           function () {
-            sendPlayerKey('play');
+            sendPlayerKey(
+              'play'
+            );
           },
 
         pause:
           function () {
-            sendPlayerKey('pause');
+            sendPlayerKey(
+              'pause'
+            );
           },
 
         rewindBack:
           function () {
-            sendPlayerKey('rewind');
+            sendPlayerKey(
+              'rewind'
+            );
           },
 
         rewindForward:
           function () {
-            sendPlayerKey('forward');
+            sendPlayerKey(
+              'forward'
+            );
           },
 
         back:
@@ -2520,11 +3462,25 @@
       function () {
         if (
           playerSession ===
+          session
+        ) {
+          try {
+            frame[0].focus();
+          } catch (e4) {}
+        }
+      },
+      250
+    );
+
+    setTimeout(
+      function () {
+        if (
+          playerSession ===
           session &&
           !session.ready
         ) {
           status.text(
-            'Плеер загружается дольше обычного • Back назад'
+            'Плеер открыт • helper пока не ответил • Back назад'
           );
         }
       },
@@ -2540,7 +3496,8 @@
     var network =
       new Lampa.Reguest();
 
-    var alive = false;
+    var alive =
+      false;
 
     var viewport =
       $('<div class="av80-view"></div>');
@@ -2548,7 +3505,9 @@
     var root =
       $('<div class="av80-page"></div>');
 
-    var self = this;
+    var self =
+      this;
+
     var navigation;
 
     var menu = {
@@ -2563,13 +3522,23 @@
       preview: null
     };
 
-    var pending = 3;
-    var rendered = false;
-    var heroItem = null;
+    var pending =
+      3;
 
-    function load(path, key) {
+    var rendered =
+      false;
+
+    var heroItem =
+      null;
+
+    function load(
+      path,
+      key
+    ) {
       network.silent(
-        apiUrl(path),
+        apiUrl(
+          path
+        ),
 
         function (html) {
           if (!alive) {
@@ -2579,12 +3548,16 @@
           try {
             datasets[key] =
               parseCatalog(
-                String(html || ''),
+                String(
+                  html ||
+                  ''
+                ),
                 path
               );
 
             if (
-              key === 'home' &&
+              key ===
+                'home' &&
               datasets[key].menu
             ) {
               menu =
@@ -2606,7 +3579,9 @@
 
           pending--;
 
-          if (pending <= 0) {
+          if (
+            pending <= 0
+          ) {
             render();
           }
         },
@@ -2624,7 +3599,9 @@
 
           pending--;
 
-          if (pending <= 0) {
+          if (
+            pending <= 0
+          ) {
             render();
           }
         },
@@ -2691,7 +3668,8 @@
 
           openCleanPlayer(
             heroItem,
-            heroItem.savedEpisode || 1
+            heroItem.savedEpisode ||
+            1
           );
         }
       );
@@ -2700,7 +3678,9 @@
         'hover:enter',
         function () {
           if (heroItem) {
-            openDetail(heroItem);
+            openDetail(
+              heroItem
+            );
           }
         }
       );
@@ -2709,9 +3689,13 @@
         .append(watch)
         .append(info);
 
-      content.append(actions);
+      content.append(
+        actions
+      );
 
-      hero.append(content);
+      hero.append(
+        content
+      );
 
       return hero;
     }
@@ -2721,20 +3705,27 @@
         return;
       }
 
-      heroItem = item;
+      heroItem =
+        item;
 
       var hero =
-        root.find('.av80-hero');
+        root.find(
+          '.av80-hero'
+        );
 
       hero
-        .find('.av80-hero-title')
+        .find(
+          '.av80-hero-title'
+        )
         .text(
           item.title ||
           'AnimeVost'
         );
 
       hero
-        .find('.av80-hero-desc')
+        .find(
+          '.av80-hero-desc'
+        )
         .text(
           clip(
             item.description ||
@@ -2745,18 +3736,30 @@
         );
 
       var bg =
-        hero.find('.av80-hero-bg');
+        hero.find(
+          '.av80-hero-bg'
+        );
 
       var poster =
-        hero.find('.av80-hero-poster');
+        hero.find(
+          '.av80-hero-poster'
+        );
 
-      if (item.poster) {
+      if (
+        item.poster
+      ) {
         bg
-          .attr('src', item.poster)
+          .attr(
+            'src',
+            item.poster
+          )
           .show();
 
         poster
-          .attr('src', item.poster)
+          .attr(
+            'src',
+            item.poster
+          )
           .show();
       } else {
         bg.hide();
@@ -2765,13 +3768,17 @@
 
       var meta =
         hero
-          .find('.av80-meta-line')
+          .find(
+            '.av80-meta-line'
+          )
           .empty();
 
       if (item.year) {
         meta.append(
           '<span class="av80-chip">' +
-            escapeHtml(item.year) +
+          escapeHtml(
+            item.year
+          ) +
           '</span>'
         );
       }
@@ -2779,29 +3786,32 @@
       if (item.type) {
         meta.append(
           '<span class="av80-chip">' +
-            escapeHtml(item.type) +
+          escapeHtml(
+            item.type
+          ) +
           '</span>'
         );
       }
 
-      if (item.availableEpisodes) {
+      if (
+        item.availableEpisodes
+      ) {
         meta.append(
           '<span class="av80-chip">' +
-            item.availableEpisodes +
-            ' серий' +
-          '</span>'
+          item.availableEpisodes +
+          ' серий</span>'
         );
       }
 
       if (item.genre) {
         meta.append(
           '<span class="av80-chip accent">' +
-            escapeHtml(
-              clip(
-                item.genre,
-                50
-              )
-            ) +
+          escapeHtml(
+            clip(
+              item.genre,
+              50
+            )
+          ) +
           '</span>'
         );
       }
@@ -2820,21 +3830,27 @@
       }
 
       options =
-        options || {};
+        options ||
+        {};
 
       var shelf =
         $('<div class="av80-shelf"></div>');
 
       shelf.append(
         $('<div class="av80-shelf-title"></div>')
-          .text(title)
+          .text(
+            title
+          )
       );
 
       var track =
         $('<div class="av80-shelf-track"></div>');
 
       items
-        .slice(0, 18)
+        .slice(
+          0,
+          18
+        )
         .forEach(
           function (item) {
             var card =
@@ -2846,16 +3862,25 @@
             card.on(
               'av80:focus hover:focus',
               function () {
-                updateHero(item);
+                updateHero(
+                  item
+                );
               }
             );
 
-            track.append(card);
+            track.append(
+              card
+            );
           }
         );
 
-      shelf.append(track);
-      root.append(shelf);
+      shelf.append(
+        track
+      );
+
+      root.append(
+        shelf
+      );
     }
 
     function render() {
@@ -2866,7 +3891,8 @@
         return;
       }
 
-      rendered = true;
+      rendered =
+        true;
 
       self.activity.loader(
         false
@@ -2923,7 +3949,9 @@
             );
 
       if (initial) {
-        updateHero(initial);
+        updateHero(
+          initial
+        );
       }
 
       addShelf(
@@ -2989,150 +4017,156 @@
       );
     }
 
-    this.create = function () {
-      alive = true;
+    this.create =
+      function () {
+        alive =
+          true;
 
-      viewport.append(root);
+        viewport.append(
+          root
+        );
 
-      root.append(
-        makeTopBar(
-          menu,
-          function () {}
-        )
-      );
+        root.append(
+          makeTopBar(
+            menu,
+            function () {}
+          )
+        );
 
-      root.append(
-        '<div class="av80-status">Загружаю домашнюю страницу…</div>'
-      );
+        root.append(
+          '<div class="av80-status">Загружаю домашнюю страницу…</div>'
+        );
 
-      this.activity.loader(
-        true
-      );
+        this.activity.loader(
+          true
+        );
 
-      navigation =
-        makeNavigation(
-          root,
-          viewport,
+        navigation =
+          makeNavigation(
+            root,
+            viewport,
 
+            function () {
+              Lampa.Controller.toggle(
+                'menu'
+              );
+            },
+
+            function () {
+              Lampa.Controller.toggle(
+                'head'
+              );
+            }
+          );
+
+        network.timeout(
+          20000
+        );
+
+        load(
+          '/',
+          'home'
+        );
+
+        load(
+          '/ongoing/',
+          'ongoing'
+        );
+
+        load(
+          '/preview/',
+          'preview'
+        );
+
+        setTimeout(
           function () {
-            Lampa.Controller.toggle(
-              'menu'
-            );
+            if (
+              alive &&
+              !rendered
+            ) {
+              pending = 0;
+              render();
+            }
           },
+          9000
+        );
 
-          function () {
-            Lampa.Controller.toggle(
-              'head'
-            );
+        return this.render();
+      };
+
+    this.start =
+      function () {
+        if (
+          Lampa.Activity.active().activity !==
+          this.activity
+        ) {
+          return;
+        }
+
+        Lampa.Controller.add(
+          'content',
+          {
+            toggle:
+              function () {
+                Lampa.Controller.collectionSet(
+                  viewport
+                );
+
+                Lampa.Controller.collectionFocus(
+                  navigation.getLast() ||
+                  false,
+                  viewport
+                );
+
+                if (
+                  navigation.getLast()
+                ) {
+                  ensureVisible(
+                    viewport,
+                    navigation.getLast()
+                  );
+                }
+              },
+
+            left:
+              function () {
+                navigation.move(
+                  'left'
+                );
+              },
+
+            right:
+              function () {
+                navigation.move(
+                  'right'
+                );
+              },
+
+            up:
+              function () {
+                navigation.move(
+                  'up'
+                );
+              },
+
+            down:
+              function () {
+                navigation.move(
+                  'down'
+                );
+              },
+
+            back:
+              function () {
+                Lampa.Activity.backward();
+              }
           }
         );
 
-      network.timeout(
-        20000
-      );
-
-      load(
-        '/',
-        'home'
-      );
-
-      load(
-        '/ongoing/',
-        'ongoing'
-      );
-
-      load(
-        '/preview/',
-        'preview'
-      );
-
-      setTimeout(
-        function () {
-          if (
-            alive &&
-            !rendered
-          ) {
-            pending = 0;
-            render();
-          }
-        },
-        9000
-      );
-
-      return this.render();
-    };
-
-    this.start = function () {
-      if (
-        Lampa.Activity.active().activity !==
-        this.activity
-      ) {
-        return;
-      }
-
-      Lampa.Controller.add(
-        'content',
-        {
-          toggle:
-            function () {
-              Lampa.Controller.collectionSet(
-                viewport
-              );
-
-              Lampa.Controller.collectionFocus(
-                navigation.getLast() || false,
-                viewport
-              );
-
-              if (
-                navigation.getLast()
-              ) {
-                ensureVisible(
-                  viewport,
-                  navigation.getLast()
-                );
-              }
-            },
-
-          left:
-            function () {
-              navigation.move(
-                'left'
-              );
-            },
-
-          right:
-            function () {
-              navigation.move(
-                'right'
-              );
-            },
-
-          up:
-            function () {
-              navigation.move(
-                'up'
-              );
-            },
-
-          down:
-            function () {
-              navigation.move(
-                'down'
-              );
-            },
-
-          back:
-            function () {
-              Lampa.Activity.backward();
-            }
-        }
-      );
-
-      Lampa.Controller.toggle(
-        'content'
-      );
-    };
+        Lampa.Controller.toggle(
+          'content'
+        );
+      };
 
     this.pause =
       function () {};
@@ -3147,7 +4181,8 @@
 
     this.destroy =
       function () {
-        alive = false;
+        alive =
+          false;
 
         network.clear();
 
@@ -3164,7 +4199,8 @@
     var network =
       new Lampa.Reguest();
 
-    var alive = false;
+    var alive =
+      false;
 
     var viewport =
       $('<div class="av80-view"></div>');
@@ -3172,7 +4208,9 @@
     var root =
       $('<div class="av80-page"></div>');
 
-    var self = this;
+    var self =
+      this;
+
     var navigation;
 
     var menu = {
@@ -3204,7 +4242,9 @@
         menu;
 
       root.append(
-        makeTopBar(menu)
+        makeTopBar(
+          menu
+        )
       );
 
       var head =
@@ -3212,7 +4252,9 @@
 
       head.append(
         $('<div class="av80-page-title"></div>')
-          .text(title)
+          .text(
+            title
+          )
       );
 
       head.append(
@@ -3228,7 +4270,9 @@
           )
       );
 
-      root.append(head);
+      root.append(
+        head
+      );
 
       if (
         !data.items ||
@@ -3244,12 +4288,16 @@
         data.items.forEach(
           function (item) {
             grid.append(
-              makePosterCard(item)
+              makePosterCard(
+                item
+              )
             );
           }
         );
 
-        root.append(grid);
+        root.append(
+          grid
+        );
       }
 
       if (
@@ -3285,7 +4333,9 @@
             }
           );
 
-          pages.append(prev);
+          pages.append(
+            prev
+          );
         }
 
         pages.append(
@@ -3325,10 +4375,14 @@
             }
           );
 
-          pages.append(next);
+          pages.append(
+            next
+          );
         }
 
-        root.append(pages);
+        root.append(
+          pages
+        );
       }
 
       navigation.bind();
@@ -3352,7 +4406,9 @@
             )[0];
 
           if (first) {
-            navigation.focus(first);
+            navigation.focus(
+              first
+            );
           }
         },
         80
@@ -3367,17 +4423,23 @@
       root
         .empty()
         .append(
-          makeTopBar(menu)
+          makeTopBar(
+            menu
+          )
         );
 
       root.append(
         $('<div class="av80-page-title"></div>')
-          .text(title)
+          .text(
+            title
+          )
       );
 
       root.append(
         $('<div class="av80-status"></div>')
-          .text(message)
+          .text(
+            message
+          )
       );
 
       self.activity.loader(
@@ -3385,174 +4447,187 @@
       );
     }
 
-    this.create = function () {
-      alive = true;
+    this.create =
+      function () {
+        alive =
+          true;
 
-      viewport.append(root);
+        viewport.append(
+          root
+        );
 
-      root.append(
-        makeTopBar(menu)
-      );
+        root.append(
+          makeTopBar(
+            menu
+          )
+        );
 
-      root.append(
-        '<div class="av80-status">Загрузка…</div>'
-      );
+        root.append(
+          '<div class="av80-status">Загрузка…</div>'
+        );
 
-      this.activity.loader(
-        true
-      );
+        this.activity.loader(
+          true
+        );
 
-      navigation =
-        makeNavigation(
-          root,
-          viewport,
+        navigation =
+          makeNavigation(
+            root,
+            viewport,
 
-          function () {
-            Lampa.Controller.toggle(
-              'menu'
-            );
+            function () {
+              Lampa.Controller.toggle(
+                'menu'
+              );
+            },
+
+            function () {
+              Lampa.Controller.toggle(
+                'head'
+              );
+            }
+          );
+
+        network.timeout(
+          20000
+        );
+
+        network.silent(
+          apiUrl(
+            path
+          ),
+
+          function (html) {
+            if (!alive) {
+              return;
+            }
+
+            try {
+              render(
+                parseCatalog(
+                  String(
+                    html ||
+                    ''
+                  ),
+                  path
+                )
+              );
+            } catch (error) {
+              console.log(
+                'AnimeVost catalog parse error',
+                error
+              );
+
+              fail(
+                'Ошибка разбора AnimeVost: ' +
+                (
+                  error &&
+                  error.message
+                    ? error.message
+                    : error
+                )
+              );
+            }
           },
 
-          function () {
-            Lampa.Controller.toggle(
-              'head'
-            );
+          function (error) {
+            if (alive) {
+              fail(
+                'Не удалось загрузить AnimeVost. Код: ' +
+                (
+                  error &&
+                  error.status
+                    ? error.status
+                    : '?'
+                )
+              );
+            }
+          },
+
+          false,
+
+          {
+            dataType:
+              'text'
           }
         );
 
-      network.timeout(
-        20000
-      );
+        return this.render();
+      };
 
-      network.silent(
-        apiUrl(path),
-
-        function (html) {
-          if (!alive) {
-            return;
-          }
-
-          try {
-            render(
-              parseCatalog(
-                String(html || ''),
-                path
-              )
-            );
-          } catch (error) {
-            console.log(
-              'AnimeVost catalog parse error',
-              error
-            );
-
-            fail(
-              'Ошибка разбора AnimeVost: ' +
-              (
-                error &&
-                error.message
-                  ? error.message
-                  : error
-              )
-            );
-          }
-        },
-
-        function (error) {
-          if (alive) {
-            fail(
-              'Не удалось загрузить AnimeVost. Код: ' +
-              (
-                error &&
-                error.status
-                  ? error.status
-                  : '?'
-              )
-            );
-          }
-        },
-
-        false,
-
-        {
-          dataType:
-            'text'
+    this.start =
+      function () {
+        if (
+          Lampa.Activity.active().activity !==
+          this.activity
+        ) {
+          return;
         }
-      );
 
-      return this.render();
-    };
-
-    this.start = function () {
-      if (
-        Lampa.Activity.active().activity !==
-        this.activity
-      ) {
-        return;
-      }
-
-      Lampa.Controller.add(
-        'content',
-        {
-          toggle:
-            function () {
-              Lampa.Controller.collectionSet(
-                viewport
-              );
-
-              Lampa.Controller.collectionFocus(
-                navigation.getLast() || false,
-                viewport
-              );
-
-              if (
-                navigation.getLast()
-              ) {
-                ensureVisible(
-                  viewport,
-                  navigation.getLast()
+        Lampa.Controller.add(
+          'content',
+          {
+            toggle:
+              function () {
+                Lampa.Controller.collectionSet(
+                  viewport
                 );
+
+                Lampa.Controller.collectionFocus(
+                  navigation.getLast() ||
+                  false,
+                  viewport
+                );
+
+                if (
+                  navigation.getLast()
+                ) {
+                  ensureVisible(
+                    viewport,
+                    navigation.getLast()
+                  );
+                }
+              },
+
+            left:
+              function () {
+                navigation.move(
+                  'left'
+                );
+              },
+
+            right:
+              function () {
+                navigation.move(
+                  'right'
+                );
+              },
+
+            up:
+              function () {
+                navigation.move(
+                  'up'
+                );
+              },
+
+            down:
+              function () {
+                navigation.move(
+                  'down'
+                );
+              },
+
+            back:
+              function () {
+                Lampa.Activity.backward();
               }
-            },
+          }
+        );
 
-          left:
-            function () {
-              navigation.move(
-                'left'
-              );
-            },
-
-          right:
-            function () {
-              navigation.move(
-                'right'
-              );
-            },
-
-          up:
-            function () {
-              navigation.move(
-                'up'
-              );
-            },
-
-          down:
-            function () {
-              navigation.move(
-                'down'
-              );
-            },
-
-          back:
-            function () {
-              Lampa.Activity.backward();
-            }
-        }
-      );
-
-      Lampa.Controller.toggle(
-        'content'
-      );
-    };
+        Lampa.Controller.toggle(
+          'content'
+        );
+      };
 
     this.pause =
       function () {};
@@ -3567,7 +4642,8 @@
 
     this.destroy =
       function () {
-        alive = false;
+        alive =
+          false;
 
         network.clear();
 
@@ -3584,7 +4660,8 @@
     var network =
       new Lampa.Reguest();
 
-    var alive = false;
+    var alive =
+      false;
 
     var viewport =
       $('<div class="av80-view"></div>');
@@ -3593,13 +4670,17 @@
       $('<div class="av80-page"></div>');
 
     var item =
-      object.av_item || {};
+      object.av_item ||
+      {};
 
-    var self = this;
+    var self =
+      this;
+
     var navigation;
 
     var selectedEpisode =
-      item.savedEpisode || 1;
+      item.savedEpisode ||
+      1;
 
     function render(data) {
       if (!alive) {
@@ -3614,7 +4695,9 @@
       var hero =
         $('<div class="av80-detail-hero"></div>');
 
-      if (data.poster) {
+      if (
+        data.poster
+      ) {
         hero.append(
           $('<img class="av80-detail-bg" alt="">')
             .attr(
@@ -3641,10 +4724,14 @@
         );
 
       if (
-        posterWrap.find('img').length
+        posterWrap.find(
+          'img'
+        ).length
       ) {
         poster.append(
-          posterWrap.find('img')
+          posterWrap.find(
+            'img'
+          )
         );
       } else {
         poster.append(
@@ -3674,7 +4761,9 @@
       if (data.year) {
         meta.append(
           '<span class="av80-chip">' +
-            escapeHtml(data.year) +
+          escapeHtml(
+            data.year
+          ) +
           '</span>'
         );
       }
@@ -3682,17 +4771,21 @@
       if (data.type) {
         meta.append(
           '<span class="av80-chip">' +
-            escapeHtml(data.type) +
+          escapeHtml(
+            data.type
+          ) +
           '</span>'
         );
       }
 
-      if (data.episodesText) {
+      if (
+        data.episodesText
+      ) {
         meta.append(
           '<span class="av80-chip">' +
-            escapeHtml(
-              data.episodesText
-            ) +
+          escapeHtml(
+            data.episodesText
+          ) +
           '</span>'
         );
       }
@@ -3700,9 +4793,9 @@
       if (data.duration) {
         meta.append(
           '<span class="av80-chip">' +
-            escapeHtml(
-              data.duration
-            ) +
+          escapeHtml(
+            data.duration
+          ) +
           '</span>'
         );
       }
@@ -3710,17 +4803,19 @@
       if (data.genre) {
         meta.append(
           '<span class="av80-chip accent">' +
-            escapeHtml(
-              clip(
-                data.genre,
-                72
-              )
-            ) +
+          escapeHtml(
+            clip(
+              data.genre,
+              72
+            )
+          ) +
           '</span>'
         );
       }
 
-      copy.append(meta);
+      copy.append(
+        meta
+      );
 
       copy.append(
         $('<div class="av80-detail-desc"></div>')
@@ -3746,11 +4841,10 @@
           Date.now();
 
         /*
-         * LG/webOS can occasionally deliver both Lampa's normal
-         * hover:enter event and the explicit controller Enter
-         * fallback below for the same physical OK press.
-         *
-         * Ignore the duplicate so only one player overlay opens.
+         * Some Lampa/webOS builds can deliver both the normal hover:enter
+         * event and our explicit controller Enter fallback for the same
+         * physical OK press. Ignore the duplicate so the player is opened
+         * only once.
          */
         if (
           now -
@@ -3773,7 +4867,7 @@
 
         try {
           console.log(
-            'AnimeVost V0.8.1 starting player:',
+            'AnimeVost V0.8.2 starting player:',
             data.title,
             'episode:',
             episodeToPlay,
@@ -3788,7 +4882,7 @@
           );
         } catch (error) {
           console.log(
-            'AnimeVost V0.8.1 player launch error',
+            'AnimeVost V0.8.2 player launch error',
             error
           );
 
@@ -3806,6 +4900,7 @@
 
       watch.on(
         'hover:enter click',
+
         function (event) {
           if (event) {
             try {
@@ -3821,11 +4916,17 @@
         }
       );
 
-      actions.append(watch);
+      actions.append(
+        watch
+      );
 
-      copy.append(actions);
+      copy.append(
+        actions
+      );
 
-      if (data.director) {
+      if (
+        data.director
+      ) {
         copy.append(
           $('<div class="av80-detail-note"></div>')
             .text(
@@ -3836,12 +4937,20 @@
       }
 
       content
-        .append(poster)
-        .append(copy);
+        .append(
+          poster
+        )
+        .append(
+          copy
+        );
 
-      hero.append(content);
+      hero.append(
+        content
+      );
 
-      root.append(hero);
+      root.append(
+        hero
+      );
 
       root.append(
         '<div class="av80-episodes-title">Серии</div>'
@@ -3890,6 +4999,7 @@
 
             ep.on(
               'hover:enter click',
+
               function (event) {
                 if (event) {
                   try {
@@ -3916,17 +5026,16 @@
                   'selected'
                 );
 
-                /*
-                 * Pressing OK directly on an episode now starts it.
-                 * This feels much more natural on a TV remote.
-                 */
-                startSelectedEpisode(
+                notify(
+                  'Выбрана серия ' +
                   episode.number
                 );
               }
             );
 
-            episodes.append(ep);
+            episodes.append(
+              ep
+            );
           }
         );
       } else {
@@ -3935,7 +5044,9 @@
         );
       }
 
-      root.append(episodes);
+      root.append(
+        episodes
+      );
 
       navigation.bind();
 
@@ -3984,7 +5095,9 @@
 
       root.append(
         $('<div class="av80-status"></div>')
-          .text(message)
+          .text(
+            message
+          )
       );
 
       self.activity.loader(
@@ -3992,212 +5105,201 @@
       );
     }
 
-    this.create = function () {
-      alive = true;
+    this.create =
+      function () {
+        alive =
+          true;
 
-      viewport.append(root);
+        viewport.append(
+          root
+        );
 
-      root.append(
-        '<div class="av80-status">Загрузка страницы аниме…</div>'
-      );
+        root.append(
+          '<div class="av80-status">Загрузка страницы аниме…</div>'
+        );
 
-      this.activity.loader(
-        true
-      );
+        this.activity.loader(
+          true
+        );
 
-      navigation =
-        makeNavigation(
-          root,
-          viewport,
+        navigation =
+          makeNavigation(
+            root,
+            viewport,
 
-          function () {
-            Lampa.Activity.backward();
+            function () {
+              Lampa.Activity.backward();
+            },
+
+            function () {
+              Lampa.Controller.toggle(
+                'head'
+              );
+            }
+          );
+
+        var key =
+          toPath(
+            item.href ||
+            '/'
+          );
+
+        if (
+          detailCache[key]
+        ) {
+          render(
+            detailCache[key]
+          );
+
+          return this.render();
+        }
+
+        network.timeout(
+          20000
+        );
+
+        network.silent(
+          apiUrl(
+            key
+          ),
+
+          function (html) {
+            if (!alive) {
+              return;
+            }
+
+            try {
+              var data =
+                parseDetail(
+                  String(
+                    html ||
+                    ''
+                  ),
+                  item
+                );
+
+              detailCache[key] =
+                data;
+
+              render(
+                data
+              );
+            } catch (error) {
+              console.log(
+                'AnimeVost detail parse error',
+                error
+              );
+
+              fail(
+                'Ошибка разбора страницы: ' +
+                (
+                  error &&
+                  error.message
+                    ? error.message
+                    : error
+                )
+              );
+            }
           },
 
-          function () {
-            Lampa.Controller.toggle(
-              'head'
-            );
+          function (error) {
+            if (alive) {
+              fail(
+                'Не удалось загрузить страницу. Код: ' +
+                (
+                  error &&
+                  error.status
+                    ? error.status
+                    : '?'
+                )
+              );
+            }
+          },
+
+          false,
+
+          {
+            dataType:
+              'text'
           }
-        );
-
-      var key =
-        toPath(
-          item.href ||
-          '/'
-        );
-
-      if (
-        detailCache[key]
-      ) {
-        render(
-          detailCache[key]
         );
 
         return this.render();
-      }
+      };
 
-      network.timeout(
-        20000
-      );
-
-      network.silent(
-        apiUrl(key),
-
-        function (html) {
-          if (!alive) {
-            return;
-          }
-
-          try {
-            var data =
-              parseDetail(
-                String(html || ''),
-                item
-              );
-
-            detailCache[key] =
-              data;
-
-            render(data);
-          } catch (error) {
-            console.log(
-              'AnimeVost detail parse error',
-              error
-            );
-
-            fail(
-              'Ошибка разбора страницы: ' +
-              (
-                error &&
-                error.message
-                  ? error.message
-                  : error
-              )
-            );
-          }
-        },
-
-        function (error) {
-          if (alive) {
-            fail(
-              'Не удалось загрузить страницу. Код: ' +
-              (
-                error &&
-                error.status
-                  ? error.status
-                  : '?'
-              )
-            );
-          }
-        },
-
-        false,
-
-        {
-          dataType:
-            'text'
+    this.start =
+      function () {
+        if (
+          Lampa.Activity.active().activity !==
+          this.activity
+        ) {
+          return;
         }
-      );
 
-      return this.render();
-    };
-
-    this.start = function () {
-      if (
-        Lampa.Activity.active().activity !==
-        this.activity
-      ) {
-        return;
-      }
-
-      Lampa.Controller.add(
-        'content',
-        {
-          toggle:
-            function () {
-              Lampa.Controller.collectionSet(
-                viewport
-              );
-
-              Lampa.Controller.collectionFocus(
-                navigation.getLast() || false,
-                viewport
-              );
-
-              if (
-                navigation.getLast()
-              ) {
-                ensureVisible(
-                  viewport,
-                  navigation.getLast()
+        Lampa.Controller.add(
+          'content',
+          {
+            toggle:
+              function () {
+                Lampa.Controller.collectionSet(
+                  viewport
                 );
-              }
-            },
 
-          left:
-            function () {
-              navigation.move(
-                'left'
-              );
-            },
+                Lampa.Controller.collectionFocus(
+                  navigation.getLast() ||
+                  false,
+                  viewport
+                );
 
-          right:
-            function () {
-              navigation.move(
-                'right'
-              );
-            },
-
-          up:
-            function () {
-              navigation.move(
-                'up'
-              );
-            },
-
-          down:
-            function () {
-              navigation.move(
-                'down'
-              );
-            },
-
-          /*
-           * Explicit LG/webOS OK fallback.
-           *
-           * Standard Lampa normally dispatches hover:enter to the
-           * focused selector. On the cinematic detail screen some
-           * LG/webOS builds can retain focus without sending that
-           * activation event.
-           */
-          enter:
-            function () {
-              var focused =
-                root.find(
-                  '.selector.focus'
-                )[0] ||
-                navigation.getLast();
-
-              if (focused) {
-                $(focused)
-                  .trigger(
-                    'hover:enter'
+                if (
+                  navigation.getLast()
+                ) {
+                  ensureVisible(
+                    viewport,
+                    navigation.getLast()
                   );
+                }
+              },
+
+            left:
+              function () {
+                navigation.move(
+                  'left'
+                );
+              },
+
+            right:
+              function () {
+                navigation.move(
+                  'right'
+                );
+              },
+
+            up:
+              function () {
+                navigation.move(
+                  'up'
+                );
+              },
+
+            down:
+              function () {
+                navigation.move(
+                  'down'
+                );
+              },
+
+            back:
+              function () {
+                Lampa.Activity.backward();
               }
-            },
+          }
+        );
 
-          back:
-            function () {
-              Lampa.Activity.backward();
-            }
-        }
-      );
-
-      Lampa.Controller.toggle(
-        'content'
-      );
-    };
+        Lampa.Controller.toggle(
+          'content'
+        );
+      };
 
     this.pause =
       function () {};
@@ -4212,7 +5314,8 @@
 
     this.destroy =
       function () {
-        alive = false;
+        alive =
+          false;
 
         network.clear();
 
@@ -4241,20 +5344,20 @@
     var button =
       $(
         '<li class="menu__item selector" data-action="' +
-          NS +
+        NS +
         '">' +
 
-          '<div class="menu__ico">' +
+        '<div class="menu__ico">' +
 
-            '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+        '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
 
-              '<path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-1 5 6 5-6 5V7z"/>' +
+        '<path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-1 5 6 5-6 5V7z"/>' +
 
-            '</svg>' +
+        '</svg>' +
 
-          '</div>' +
+        '</div>' +
 
-          '<div class="menu__text">AnimeVost</div>' +
+        '<div class="menu__text">AnimeVost</div>' +
 
         '</li>'
       );
@@ -4266,11 +5369,15 @@
 
     $('.menu .menu__list')
       .eq(0)
-      .append(button);
+      .append(
+        button
+      );
   }
 
   function init() {
-    if (window[FLAG]) {
+    if (
+      window[FLAG]
+    ) {
       return;
     }
 
@@ -4298,29 +5405,33 @@
       addMenuButton();
 
       notify(
-        'AnimeVost V0.8.1 • Player launch fix загружен'
+        'AnimeVost V0.8.2 • Cinematic Player загружен'
       );
     } catch (error) {
       console.log(
-        'AnimeVost V0.8.1 init error',
+        'AnimeVost V0.8.2 init error',
         error
       );
 
       notify(
-        'Ошибка запуска AnimeVost V0.8.1'
+        'Ошибка запуска AnimeVost V0.8.2'
       );
     }
   }
 
-  if (window.appready) {
+  if (
+    window.appready
+  ) {
     init();
   } else {
     Lampa.Listener.follow(
       'app',
+
       function (event) {
         if (
           event &&
-          event.type === 'ready'
+          event.type ===
+          'ready'
         ) {
           init();
         }
